@@ -105,22 +105,29 @@
     return null;
   }
 
-  function parseNotifierItemID(rawID, type, extraData) {
+  function parseNotifierItemIDs(rawID, type, extraData) {
+    const candidates = [];
+    function add(n) {
+      const parsed = parseInt(n, 10);
+      if (Number.isInteger(parsed) && !candidates.includes(parsed)) candidates.push(parsed);
+    }
+
     if (type === "item-tag") {
-      // Zotero item-tag notifier ids are compound strings such as
-      // "<tagID>-<itemID>". The attachment itemID is the second half.
+      // Zotero item-tag notifier ids are compound strings. In practice this can
+      // appear as either "<itemID>-<tagID>" or "<tagID>-<itemID>" depending on
+      // code path, so try both halves and let handleAutoConvert() filter to the
+      // attachment item.
       const str = String(rawID);
       if (str.includes("-")) {
-        const parsed = parseInt(str.split("-").pop(), 10);
-        if (Number.isInteger(parsed)) return parsed;
+        for (const part of str.split("-")) add(part);
       }
       if (extraData && extraData[rawID] && extraData[rawID].itemID) {
-        const parsed = parseInt(extraData[rawID].itemID, 10);
-        if (Number.isInteger(parsed)) return parsed;
+        add(extraData[rawID].itemID);
       }
+    } else {
+      add(rawID);
     }
-    const parsed = parseInt(rawID, 10);
-    return Number.isInteger(parsed) ? parsed : null;
+    return candidates;
   }
 
   async function handleAutoConvert(itemID) {
@@ -283,9 +290,7 @@
       if (!_enabled) return;
       if (type !== "item-tag" && type !== "item") return;
       const rawIDs = Array.from(ids || []);
-      const parsedIDs = rawIDs
-        .map((id) => parseNotifierItemID(id, type, extraData))
-        .filter((id) => id !== null);
+      const parsedIDs = rawIDs.flatMap((id) => parseNotifierItemIDs(id, type, extraData));
       _lastEvent = { event, type, ids: rawIDs, at: new Date().toISOString() };
       _lastParsedIDs = parsedIDs;
       log("event:", event, "type:", type, "ids:", rawIDs.join(","), "parsed:", parsedIDs.join(","));
