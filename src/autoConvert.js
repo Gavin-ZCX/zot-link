@@ -21,9 +21,18 @@
   let _notifierID = null;
   let _enabled = false;
 
+  let ConsoleServices = null;
+  try {
+    ConsoleServices = ChromeUtils.importESModule("resource://gre/modules/Services.sys.mjs").Services;
+  } catch (_e) { /* Services may be unavailable in tests */ }
+
   function log() {
+    const msg = "[zot-link:auto] " + Array.prototype.join.call(arguments, " ");
+    if (ConsoleServices && ConsoleServices.console) {
+      ConsoleServices.console.logStringMessage(msg);
+    }
     if (typeof Zotero !== "undefined" && Zotero.debug) {
-      Zotero.debug("[zot-link:auto] " + Array.prototype.join.call(arguments, " "));
+      Zotero.debug(msg);
     }
   }
 
@@ -250,9 +259,9 @@
     try {
       _notifierID = Zotero.Notifier.registerObserver(observer, ["item-tag", "item"], "zot-link-auto");
       _enabled = true;
-      Zotero.debug("[zot-link:auto] Notifier started, id=" + _notifierID);
+      log("Notifier started, id=" + _notifierID);
     } catch (e) {
-      Zotero.debug("[zot-link:auto] Notifier start failed: " + (e.message || String(e)));
+      log("Notifier start failed: " + (e.message || String(e)));
     }
   }
 

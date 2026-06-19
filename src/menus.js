@@ -42,8 +42,12 @@ Object.assign(Zotero.ZotLink, {
         menuitem.setAttribute("label", "zot-link");
         menuitem.addEventListener("command", () => {
           try {
+            const autoStatus = this.autoConvert && typeof this.autoConvert.isRunning === "function"
+              ? (this.autoConvert.isRunning() ? "running" : "stopped")
+              : "missing";
             const msg = "zot-link v" + this.version + " — skeleton loaded.\n"
-              + "MVP actions (right-click conversion, batch preview) not yet implemented.";
+              + "Manual actions: ready.\n"
+              + "Auto convert: " + autoStatus + ".";
             window.alert(msg);
             Zotero.debug("[zot-link] tools menu clicked");
           } catch (e) {
