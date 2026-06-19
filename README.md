@@ -69,12 +69,12 @@ Add-on Manager 拒绝。`update_url` 是 Zotero 9 插件 manifest 的必填字�
    `extensions.experiments.enabled` 并设为 `true`；同时打开
    `Tools → Developer → Error Console` 查看 `[zot-link]` 日志。
 4. 安装 xpi：`Tools → Plugins → 齿轮图标 → Install Plugin From File…`，
-   选择 `dist/zot-link-<version>.xpi`。
+   选择 `dist/zot-link-<version>.xpi`。如果 Zotero 已安装旧版，建议先在插件管理器里移除旧版再安装新版。
 5. 验证：
    - 重启 Zotero。
    - `Tools` 菜单底部应出现 `zot-link`。
-   - 点击应弹出 “zot-link v0.0.1 — skeleton loaded.” 的 alert。
-   - `Error Console` 中应看到 `[zot-link] startup version=0.0.1` 与
+   - 点击应弹出 “zot-link v0.0.2 — skeleton loaded.” 的 alert。
+   - `Error Console` 中应看到 `[zot-link] startup version=0.0.2` 与
      `[zot-link] menuitem attached to window`。
 
 ## 开发热加载（可选）
