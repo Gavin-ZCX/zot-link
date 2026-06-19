@@ -291,9 +291,20 @@
       && Zotero.ZotLink.convert.isProbablyAlreadyLinked(item, draft.targetRelativePath, z);
     let finalStatus = draft.status;
     let finalReason = draft.reason;
+    let displaySourcePath = sourcePath;
     if (alreadyLinked) {
       finalStatus = "update-only";
       finalReason = "already-linked-correct-path";
+    } else if (role === "markdown") {
+      // Markdown: link existing file from disk, not converting an attachment.
+      if (targetExists) {
+        finalStatus = "ready";
+        finalReason = null;
+        displaySourcePath = targetAbsPath || displaySourcePath;
+      } else {
+        finalStatus = "blocked";
+        finalReason = "md-file-not-found";
+      }
     } else if (finalStatus === "blocked" && sameFile) {
       finalStatus = "ready";
       finalReason = null;
@@ -304,7 +315,7 @@
       actionKey,
       parentKey,
       originalFilename,
-      currentPath,
+      currentPath: displaySourcePath,
       isAttachment,
       isParent,
       isNote: itemIsNote(item),

@@ -126,7 +126,9 @@
               + " target=" + preview.targetRelativePath
               + " reason=" + preview.reason);
             if ((preview.status === "ready" || preview.status === "ready-skip-copy" || preview.status === "update-only") && Zotero.ZotLink.convert) {
+              const isMarkdown = action.key === "markdown";
               const sourceLabel = preview.updateOnly ? "当前已为 linked attachment" :
+                isMarkdown ? "将在父条目下挂接 linked Markdown Full Text" :
                 preview.skipCopy ? "文件已在目标位置（跳过复制）" :
                 "即将复制文件并创建 linked attachment";
               const actionLabel = preview.updateOnly ? "将更新标题和标签：" : "此操作不可逆。";
@@ -140,16 +142,27 @@
                 + "是否继续？"
               );
               if (confirmed) {
-                const result = await Zotero.ZotLink.convert.convertImportedToLinked({
-                  item: sel.items[0],
-                  actionKey: preview.actionKey,
-                  parentKey: preview.parentKey,
-                  targetRelativePath: preview.targetRelativePath,
-                  title: preview.title,
-                  tag: preview.tag,
-                  skipCopy: !!preview.skipCopy,
-                  updateOnly: !!preview.updateOnly
-                });
+                let result;
+                if (isMarkdown) {
+                  result = await Zotero.ZotLink.convert.linkExistingFile({
+                    parentItem: sel.items[0],
+                    parentKey: preview.parentKey,
+                    targetRelativePath: preview.targetRelativePath,
+                    title: preview.title,
+                    tag: preview.tag
+                  });
+                } else {
+                  result = await Zotero.ZotLink.convert.convertImportedToLinked({
+                    item: sel.items[0],
+                    actionKey: preview.actionKey,
+                    parentKey: preview.parentKey,
+                    targetRelativePath: preview.targetRelativePath,
+                    title: preview.title,
+                    tag: preview.tag,
+                    skipCopy: !!preview.skipCopy,
+                    updateOnly: !!preview.updateOnly
+                  });
+                }
                 Zotero.debug("[zot-link] convert result: " + JSON.stringify(result));
                 if (result.status === "success") {
                   const skipped = result.skipped && result.skipped.length

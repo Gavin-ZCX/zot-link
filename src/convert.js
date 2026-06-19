@@ -274,7 +274,69 @@
       getItemAttachmentPath,
       isProbablyAlreadyLinked,
       verifyCopy,
-      convertImportedToLinked
+      convertImportedToLinked,
+      linkExistingFile
     };
+  }
+
+  async function linkExistingFile(input) {
+    const opts = input || {};
+    const parentItem = opts.parentItem;
+    const parentKey = opts.parentKey;
+    const targetRelativePath = opts.targetRelativePath;
+    const title = opts.title || "Markdown Full Text";
+    const tag = opts.tag;
+    const contentType = opts.contentType || "text/markdown";
+    const zotero = opts.zotero || (typeof Zotero !== "undefined" ? Zotero : null);
+    const ioUtils = opts.ioUtils || (typeof IOUtils !== "undefined" ? IOUtils : null);
+    const paths = Zotero.ZotLink && Zotero.ZotLink.paths;
+
+    const base = { actionKey: "markdown", parentKey, targetRelativePath };
+
+    if (!zotero) return Object.assign({ status: "failed", reason: "missing-zotero" }, base);
+    if (!targetRelativePath) return Object.assign({ status: "failed", reason: "missing-target-relative-path" }, base);
+    if (!parentItem && !parentKey) return Object.assign({ status: "failed", reason: "missing-parent-item" }, base);
+
+    const assetRoot = zotero.Prefs
+      ? safeCall(() => zotero.Prefs.get("baseAttachmentPath"), null)
+      : null;
+    if (!assetRoot) return Object.assign({ status: "failed", reason: "no-linked-attachment-base-directory" }, base);
+
+    const targetAbsPath = (paths && paths.absolutePathForRelativePath)
+      ? paths.absolutePathForRelativePath(targetRelativePath, assetRoot)
+      : null;
+    if (!targetAbsPath) return Object.assign({ status: "failed", reason: "cannot-resolve-absolute-target-path" }, base);
+
+    // File must already exist on disk.
+    if (!ioUtils) return Object.assign({ status: "failed", reason: "missing-ioUtils" }, base);
+    const exists = await safeCall(() => ioUtils.exists(targetAbsPath), false);
+    if (!exists) return Object.assign({ status: "blocked", reason: "md-file-not-found", targetAbsPath }, base);
+
+    // Use Zotero.Attachments.linkFromFile to create the linked attachment.
+    if (!zotero.Attachments || typeof zotero.Attachments.linkFromFile !== "function") {
+      return Object.assign({ status: "failed", reason: "zotero-attachments-api-unavailable" }, base);
+    }
+
+    let attachment;
+    try {
+      attachment = await zotero.Attachments.linkFromFile({
+        file: targetAbsPath,
+        parentItemID: parentItem ? parentItem.id : null,
+        title,
+        contentType
+      });
+    } catch (e) {
+      return Object.assign({ status: "failed", reason: "link-from-file-failed: " + (e.message || String(e)) }, base);
+    }
+
+    if (tag && attachment && typeof attachment.addTag === "function") {
+      try { attachment.addTag(tag); await attachment.save(); } catch (e) { Zotero.logError(e); }
+    }
+
+    return Object.assign({
+      status: "success",
+      reason: null,
+      newItemKey: attachment ? attachment.key : null
+    }, base);
   }
 })();
