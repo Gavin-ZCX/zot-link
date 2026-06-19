@@ -97,21 +97,36 @@
     let item;
     try {
       item = Zotero.Items.get(itemID);
-      if (!item || !item.isAttachment || !item.isAttachment()) return;
+      if (!item || typeof item.isAttachment !== "function" || !item.isAttachment()) return;
     } catch (e) {
       log("cannot get item", itemID, e.message || String(e));
       return;
     }
 
+    // Ensure item data is loaded before reading tags/mode.
+    try {
+      if (typeof item.loadDataType === "function") {
+        await item.loadDataType("itemData");
+      }
+      if (typeof item.loadPrimaryData === "function") {
+        await item.loadPrimaryData();
+      }
+    } catch (_e) { /* proceed with whatever we have */ }
+
     // Only convert imported files; skip already-linked ones.
     const linkedMode = Zotero.Attachments ? Zotero.Attachments.LINK_MODE_LINKED_FILE : 2;
     const importedMode = Zotero.Attachments ? Zotero.Attachments.LINK_MODE_IMPORTED_FILE : 0;
     const currentMode = safeCall(() => item.attachmentLinkMode, null);
-    if (currentMode !== importedMode) return;
+    log("item", itemID, "linkMode:", currentMode);
+    if (currentMode !== importedMode && currentMode !== null) {
+      log("skipping item", itemID, "- not imported_file (mode:", currentMode, ")");
+      return;
+    }
 
     // Extract role tag from the item's current tags.
     let tags;
     try { tags = item.getTags ? item.getTags() : []; } catch (_e) { tags = []; }
+    log("item", itemID, "tags:", JSON.stringify(tags));
     const roleTag = extractRoleFromTags(tags);
     if (!roleTag) return;
 
@@ -220,9 +235,10 @@
   }
 
   const observer = {
-    notify(event, type, ids) {
+    notify(event, type, ids, extraData) {
       if (!_enabled) return;
-      if (type !== "item-tag") return;
+      if (type !== "item-tag" && type !== "item") return;
+      log("event:", event, "type:", type, "ids:", (ids || []).join(","));
       for (const id of (ids || [])) {
         scheduleConvert(id);
       }
@@ -232,11 +248,11 @@
   function start() {
     if (_notifierID) return;
     try {
-      _notifierID = Zotero.Notifier.registerObserver(observer, ["item-tag"]);
+      _notifierID = Zotero.Notifier.registerObserver(observer, ["item-tag", "item"], "zot-link-auto");
       _enabled = true;
-      log("Notifier started");
+      Zotero.debug("[zot-link:auto] Notifier started, id=" + _notifierID);
     } catch (e) {
-      log("Notifier start failed:", e.message || String(e));
+      Zotero.debug("[zot-link:auto] Notifier start failed: " + (e.message || String(e)));
     }
   }
 
