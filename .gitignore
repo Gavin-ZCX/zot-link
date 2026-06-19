@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.xpi
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+CLAUDE_TASK_*.md

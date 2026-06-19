@@ -1,0 +1,11 @@
+{
+  "name": "zot-link",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Zotero 9 plugin: convert imported attachments to structured linked files under _items/{KEY}/.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "license": "GPL-3.0-only"
+}

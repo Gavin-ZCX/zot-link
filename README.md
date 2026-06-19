@@ -1,0 +1,86 @@
+# zot-link
+
+Zotero 9 桌面端插件骨架。最终目标：把 Zotero **导入式附件**（`linkMode = imported_file`）
+转换为 `_items/{ITEM_KEY}/` 下的**结构化 linked attachment**，按角色（正文 / 译文 / 补充）
+路由，并释放 Zotero storage 副本。
+
+> 当前状态：**第一里程碑**仅完成最小可加载骨架——工具菜单出现 `zot-link` 入口、
+> 点击弹出占位 alert。**尚未**实现任何附件转换、删除或迁移逻辑。
+
+## 设计文档
+
+- `C:/OneDrive/Zotero/_agent/zot-link_设计与ZotMoov分析_2026-06-16.md`
+- `C:/OneDrive/Zotero/_agent/zot-link_插件实现计划_2026-06-19.md`
+
+## 骨架方案
+
+本仓库采用**干净的最小 bootstrapped 插件骨架**：`manifest.json` + `bootstrap.js`
+与少量 `src/` 模块，并用无外部依赖的 Node 脚本打包为 `.xpi`。
+
+选择理由：
+
+- 兼容 Zotero 9，同时保持 Zotero 7+ bootstrapped 生命周期；
+- 不 fork ZotMoov，不继承其通配符/配置架构；
+- 先验证 Zotero 可加载与菜单注入，再逐步加入路径、角色、转换核心；
+- `zotero-plugin-scaffold` 已确认存在，但首个里程碑使用更小骨架，避免过早引入与本项目边界无关的模板复杂度。
+
+## 目录结构
+
+```
+zot-link/
+├── manifest.json          WebExtension manifest（Zotero 7/9 兼容）
+├── bootstrap.js           插件生命周期（startup/shutdown/install/uninstall）
+├── src/
+│   └── menus.js           工具菜单注册（Zotero.ZotLink）
+├── scripts/
+│   └── build.mjs          打包为 dist/zot-link-<version>.xpi（无外部依赖）
+├── package.json           build / clean npm scripts
+├── README.md              本文
+├── LICENSE                GPL-3.0
+└── NOTICE                 第三方代码与衍生说明
+```
+
+## 构建 xpi
+
+```bash
+npm run build
+```
+
+产出：`dist/zot-link-<version>.xpi`。该文件是一个标准 zip，根目录含 `manifest.json`。
+
+## 安装到 Zotero 9 进行本地验证
+
+> ⚠️ **不要装到日常使用的 profile**。建议先用临时 / 测试 profile。
+
+1. 关闭 Zotero。
+2. 启动 Zotero 并切换到测试 profile：
+   ```
+   "C:\Program Files\Zotero\zotero.exe" -P
+   ```
+   选择 `Create Profile…`，命名 `zot-link-dev`，**自定义** profile 目录到一个空文件夹。
+3. 启用开发模式（可选但推荐）：在 `about:config` 中查找
+   `extensions.experiments.enabled` 并设为 `true`；同时打开
+   `Tools → Developer → Error Console` 查看 `[zot-link]` 日志。
+4. 安装 xpi：`Tools → Plugins → 齿轮图标 → Install Plugin From File…`，
+   选择 `dist/zot-link-<version>.xpi`。
+5. 验证：
+   - 重启 Zotero。
+   - `Tools` 菜单底部应出现 `zot-link`。
+   - 点击应弹出 “zot-link v0.0.1 — skeleton loaded.” 的 alert。
+   - `Error Console` 中应看到 `[zot-link] startup version=0.0.1` 与
+     `[zot-link] menuitem attached to window`。
+
+## 开发热加载（可选）
+
+将 `dist/zot-link-<version>.xpi` 解压后路径填入 Zotero profile
+`extensions/zot-link@local` 文件（包含解压目录的绝对路径），重启 Zotero
+即可直接加载源码目录。修改 `src/` 后只需重启或 `Tools → Developer →
+Restart with logging`。
+
+## License
+
+GPL-3.0-only — 见 [LICENSE](./LICENSE)。
+
+当前骨架**尚未**复制或衍生 [ZotMoov](https://github.com/wileyyugioh/zotmoov)
+代码；后续若移植其转换机制（§4.3 of design doc），将继续保留 GPL-3.0 并在
+[NOTICE](./NOTICE) 中标注衍生来源。

@@ -1,0 +1,41 @@
+zot-link
+Copyright (c) 2026 zot-link contributors
+
+This product is distributed under the terms of the GNU General Public License
+v3.0 only (GPL-3.0-only). See LICENSE for the full text.
+
+------------------------------------------------------------------------------
+Third-party code and derivation status (as of the v0.0.1 skeleton milestone)
+------------------------------------------------------------------------------
+
+NO third-party source code has been copied or directly derived into this
+repository at this milestone. The skeleton was written from scratch following
+the Zotero 7/9 bootstrapped-plugin lifecycle documented at:
+
+  https://www.zotero.org/support/dev/zotero_7_for_developers
+
+------------------------------------------------------------------------------
+Planned future derivation: ZotMoov
+------------------------------------------------------------------------------
+
+The design document `zot-link_设计与ZotMoov分析_2026-06-16.md` identifies the
+following ZotMoov (https://github.com/wileyyugioh/zotmoov, GPL-3.0) mechanisms
+as references / candidates for porting into later milestones:
+
+  1. The imported-to-linked attachment conversion sequence in
+     `02-zotmoov.js` (clone -> set LINK_MODE_LINKED_FILE -> save -> copy file
+     -> move child items -> erase original). [Design doc §4.3]
+  2. The Notifier registration pattern in `01-zotmoov-notify-callback.js`.
+  3. The right-click / Tools menu registration patterns in
+     `03-zotmoov-menus*.js`.
+
+When any of the above is ported, this NOTICE will be updated to:
+
+  - State which ZotMoov file(s) and which revision were referenced.
+  - State whether the port is verbatim copy, line-by-line adaptation, or
+     reimplementation guided by the original.
+  - Continue to license the derivative under GPL-3.0-only.
+
+ZotMoov's `00-zotmoov-wildcard.js` and `00-zotmoov-command-parser.js` are
+NOT planned for use; zot-link's path scheme is a fixed `_items/{KEY}/...`
+structure rather than user-configurable wildcards.
