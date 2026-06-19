@@ -259,6 +259,18 @@
           [epoch, clone.id]
         );
       } catch (e) { Zotero.logError(e); }
+    } else if (clone) {
+      // Ensure chronological order: Main(2000) < Translation(2001) < Supplement(2002)
+      const epochMap = { translation: "2000-01-02 00:00:00", supplement: "2000-01-03 00:00:00" };
+      const dt = epochMap[actionKey];
+      if (dt) {
+        try {
+          await Zotero.DB.queryAsync(
+            "UPDATE items SET dateAdded=? WHERE itemID=?",
+            [dt, clone.id]
+          );
+        } catch (e) { Zotero.logError(e); }
+      }
     }
 
     // --- Step 5: Erase original (only after all steps succeed) ---------------
@@ -297,7 +309,7 @@
     const parentItem = opts.parentItem;
     const parentKey = opts.parentKey;
     const targetRelativePath = opts.targetRelativePath;
-    const title = opts.title || "Markdown Full Text";
+    const title = opts.title || "04 Markdown Full Text";
     const tag = opts.tag;
     const contentType = opts.contentType || "text/markdown";
     const zotero = opts.zotero || (typeof Zotero !== "undefined" ? Zotero : null);

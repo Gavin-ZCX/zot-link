@@ -166,7 +166,7 @@ const result = plain(await convert.convertImportedToLinked({
   actionKey: "main",
   parentKey: "PARENT42",
   targetRelativePath: "_items/PARENT42/source/main.pdf",
-  title: "Main PDF",
+  title: "01 Main PDF",
   tag: "role/main",
   zotero: sandbox.Zotero,
   ioUtils: sandbox.IOUtils
@@ -199,7 +199,7 @@ const blockedResult = plain(await convert.convertImportedToLinked({
   actionKey: "main",
   parentKey: "PARENT42",
   targetRelativePath: "_items/PARENT42/source/main.pdf",
-  title: "Main PDF",
+  title: "01 Main PDF",
   tag: "role/main",
   targetExists: true,
   zotero: sandbox.Zotero,
@@ -226,7 +226,7 @@ const failResult = plain(await convert.convertImportedToLinked({
   actionKey: "main",
   parentKey: "PARENT42",
   targetRelativePath: "_items/PARENT42/source/main.pdf",
-  title: "Main PDF",
+  title: "01 Main PDF",
   tag: "role/main",
   zotero: sandbox.Zotero,
   ioUtils: badIOUtils
@@ -254,7 +254,7 @@ const cloneFailResult = plain(await convert.convertImportedToLinked({
   actionKey: "main",
   parentKey: "PARENT42",
   targetRelativePath: "_items/PARENT42/source/main.pdf",
-  title: "Main PDF",
+  title: "01 Main PDF",
   tag: "role/main",
   zotero: sandbox.Zotero,
   ioUtils: sandbox.IOUtils
