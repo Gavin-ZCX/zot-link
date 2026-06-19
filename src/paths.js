@@ -93,7 +93,7 @@
       const filename = "main.pdf";
       const relativePath = sourceDir(parentKey) + "/" + filename;
       if (hasExisting(opts.existingRelativePaths, relativePath)) {
-        return blocked(role, relativePath, filename, "main-target-exists");
+        return blocked(role, relativePath, filename, "target-exists");
       }
       return ready(role, relativePath, filename);
     }

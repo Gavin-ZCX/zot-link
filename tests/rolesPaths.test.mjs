@@ -98,7 +98,7 @@ assert.deepEqual(
     originalFilename: "foo.pdf",
     existingRelativePaths: ["_items/ABCD1234/source/main.pdf"]
   })),
-  { status: "blocked", role: "main", relativePath: "_items/ABCD1234/source/main.pdf", filename: "main.pdf", reason: "main-target-exists" }
+  { status: "blocked", role: "main", relativePath: "_items/ABCD1234/source/main.pdf", filename: "main.pdf", reason: "target-exists" }
 );
 
 // supplement number increments and ignores unrelated filenames.

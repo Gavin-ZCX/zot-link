@@ -152,7 +152,7 @@ const mainConflict = plain(preview.buildPreview({
   existingRelativePaths: ["_items/PARENT42/source/main.pdf"]
 }));
 assert.equal(mainConflict.status, "blocked");
-assert.equal(mainConflict.reason, "main-target-exists");
+assert.equal(mainConflict.reason, "target-exists");
 assert.equal(mainConflict.targetRelativePath, "_items/PARENT42/source/main.pdf");
 
 const msg = preview.formatPreviewMessage(mainPreview, {
@@ -184,7 +184,7 @@ const preflightMain = plain(await preview.previewForSelectionWithPreflight("main
   items: [fakeAttachment({ filename: "Paper.pdf" })]
 }, sandbox.Zotero, fakeIOUtils));
 assert.equal(preflightMain.status, "blocked");
-assert.equal(preflightMain.reason, "main-target-exists");
+assert.equal(preflightMain.reason, "target-exists");
 assert.equal(preflightMain.assetRoot, "C:\\OneDrive\\Zotero");
 assert.equal(preflightMain.targetExists, true);
 
