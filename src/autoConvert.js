@@ -25,6 +25,7 @@
   let _lastError = null;
   let _lastParsedIDs = null;
   let _lastSkipped = null;
+  let _lastCandidateResults = null;
 
   let ConsoleServices = null;
   try {
@@ -130,58 +131,119 @@
     return candidates;
   }
 
-  async function handleAutoConvert(itemID) {
-    if (!_enabled) return;
-
-    let item;
-    try {
-      item = Zotero.Items.get(itemID);
-      if (!item || typeof item.isAttachment !== "function" || !item.isAttachment()) {
-        _lastSkipped = "item " + itemID + " is not an attachment";
-        return;
-      }
-    } catch (e) {
-      _lastError = "cannot get item " + itemID + ": " + (e.message || String(e));
-      log(_lastError);
-      return;
+  function recordCandidate(itemID, result) {
+    _lastCandidateResults = _lastCandidateResults || [];
+    _lastCandidateResults.push(Object.assign({ itemID, at: new Date().toISOString() }, result));
+    if (_lastCandidateResults.length > 20) _lastCandidateResults.shift();
+    if (result && result.status === "skipped") {
+      _lastSkipped = "item " + itemID + " " + result.reason;
     }
+  }
 
-    // Ensure item data is loaded before reading tags/mode.
+  async function loadItemForAuto(item) {
     try {
       if (typeof item.loadDataType === "function") {
         await item.loadDataType("itemData");
+        await item.loadDataType("tags");
+        await item.loadDataType("childItems");
       }
       if (typeof item.loadPrimaryData === "function") {
         await item.loadPrimaryData();
       }
     } catch (_e) { /* proceed with whatever we have */ }
+  }
+
+  function itemRoleTag(item) {
+    let tags;
+    try { tags = item.getTags ? item.getTags() : []; } catch (_e) { tags = []; }
+    log("item", item.id || item.itemID || "?", "tags:", JSON.stringify(tags));
+    return extractRoleFromTags(tags);
+  }
+
+  async function uniqueImportedChildAttachment(parentItem) {
+    let attachmentIDs = [];
+    try { attachmentIDs = parentItem.getAttachments ? parentItem.getAttachments(false) : []; } catch (_e) { attachmentIDs = []; }
+    const importedMode = Zotero.Attachments ? Zotero.Attachments.LINK_MODE_IMPORTED_FILE : 0;
+    const imported = [];
+    for (const id of attachmentIDs || []) {
+      let child = null;
+      try { child = Zotero.Items.get(id); } catch (_e) { child = null; }
+      if (!child || typeof child.isAttachment !== "function" || !child.isAttachment()) continue;
+      await loadItemForAuto(child);
+      const mode = safeCall(() => child.attachmentLinkMode, null);
+      if (mode === importedMode || mode === null) imported.push(child);
+    }
+    return imported;
+  }
+
+  async function handleAutoConvert(itemID, forcedRoleTag) {
+    if (!_enabled) return;
+
+    let item;
+    try {
+      item = Zotero.Items.get(itemID);
+      if (!item) {
+        recordCandidate(itemID, { status: "skipped", reason: "not found" });
+        return;
+      }
+    } catch (e) {
+      _lastError = "cannot get item " + itemID + ": " + (e.message || String(e));
+      recordCandidate(itemID, { status: "error", reason: _lastError });
+      log(_lastError);
+      return;
+    }
+
+    await loadItemForAuto(item);
+
+    // If the role tag was added to a parent item, only auto-handle it when
+    // there is exactly one imported attachment below it. Multiple imported
+    // attachments remain human-confirmation-required — no guessing.
+    if (!item.isAttachment || !item.isAttachment()) {
+      const isParent = typeof item.isRegularItem === "function" && item.isRegularItem();
+      if (!isParent) {
+        recordCandidate(itemID, { status: "skipped", reason: "is not an attachment" });
+        return;
+      }
+      const roleTag = forcedRoleTag || itemRoleTag(item);
+      if (!roleTag) {
+        recordCandidate(itemID, { status: "skipped", reason: "parent has no watched role tag" });
+        return;
+      }
+      const imported = await uniqueImportedChildAttachment(item);
+      if (imported.length !== 1) {
+        _lastError = "parent " + itemID + " has " + imported.length + " imported attachments; not guessing for " + roleTag;
+        recordCandidate(itemID, { status: "skipped", reason: _lastError });
+        return;
+      }
+      recordCandidate(itemID, { status: "parent-fallback", reason: "using child attachment " + imported[0].id, roleTag });
+      return handleAutoConvert(imported[0].id, roleTag);
+    }
 
     // Only convert imported files; skip already-linked ones.
-    const linkedMode = Zotero.Attachments ? Zotero.Attachments.LINK_MODE_LINKED_FILE : 2;
     const importedMode = Zotero.Attachments ? Zotero.Attachments.LINK_MODE_IMPORTED_FILE : 0;
     const currentMode = safeCall(() => item.attachmentLinkMode, null);
     log("item", itemID, "linkMode:", currentMode);
     if (currentMode !== importedMode && currentMode !== null) {
-      _lastSkipped = "item " + itemID + " not imported_file, mode=" + currentMode;
+      recordCandidate(itemID, { status: "skipped", reason: "not imported_file, mode=" + currentMode });
       log("skipping item", itemID, "- not imported_file (mode:", currentMode, ")");
       return;
     }
 
-    // Extract role tag from the item's current tags.
-    let tags;
-    try { tags = item.getTags ? item.getTags() : []; } catch (_e) { tags = []; }
-    log("item", itemID, "tags:", JSON.stringify(tags));
-    const roleTag = extractRoleFromTags(tags);
+    const roleTag = forcedRoleTag || itemRoleTag(item);
     if (!roleTag) {
-      _lastSkipped = "item " + itemID + " has no watched role tag";
+      recordCandidate(itemID, { status: "skipped", reason: "has no watched role tag" });
       return;
     }
 
     const actionKey = TAG_TO_ACTION[roleTag];
-    if (!actionKey) return;
+    if (!actionKey) {
+      recordCandidate(itemID, { status: "skipped", reason: "unknown role tag " + roleTag });
+      return;
+    }
 
     log("auto-convert item", itemID, "role", roleTag, "→", actionKey);
     _lastHandled = { itemID, roleTag, actionKey, at: new Date().toISOString() };
+    recordCandidate(itemID, { status: "handled", roleTag, actionKey });
 
     // Run preflight.
     const preview = Zotero.ZotLink && Zotero.ZotLink.preview;
@@ -332,6 +394,7 @@
       watchedTags: WATCHED_TAGS,
       lastEvent: _lastEvent,
       lastParsedIDs: _lastParsedIDs,
+      lastCandidateResults: _lastCandidateResults,
       lastHandled: _lastHandled,
       lastError: _lastError,
       lastSkipped: _lastSkipped

@@ -54,6 +54,7 @@ Object.assign(Zotero.ZotLink, {
               + "observerID: " + (autoDetails && autoDetails.notifierID ? autoDetails.notifierID : "—") + "\n"
               + "lastEvent: " + (autoDetails && autoDetails.lastEvent ? JSON.stringify(autoDetails.lastEvent) : "—") + "\n"
               + "lastParsedIDs: " + (autoDetails && autoDetails.lastParsedIDs ? JSON.stringify(autoDetails.lastParsedIDs) : "—") + "\n"
+              + "lastCandidates: " + (autoDetails && autoDetails.lastCandidateResults ? JSON.stringify(autoDetails.lastCandidateResults) : "—") + "\n"
               + "lastHandled: " + (autoDetails && autoDetails.lastHandled ? JSON.stringify(autoDetails.lastHandled) : "—") + "\n"
               + "lastError: " + (autoDetails && autoDetails.lastError ? autoDetails.lastError : "—") + "\n"
               + "lastSkipped: " + (autoDetails && autoDetails.lastSkipped ? autoDetails.lastSkipped : "—");
