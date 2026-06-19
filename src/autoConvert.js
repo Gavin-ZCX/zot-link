@@ -1,0 +1,261 @@
+/* zot-link autoConvert — tag-triggered automatic attachment conversion.
+ *
+ * Registers a Zotero Notifier observer that watches for role tags
+ * (role/main, role/translation, role/supplement) added to imported-file
+ * attachments. When detected, runs the same safe conversion pipeline
+ * as the right-click menu, but without user confirmation.
+ *
+ * Results are logged to _items/{PARENT_KEY}/meta/zot-link-log.jsonl.
+ */
+
+(function () {
+  "use strict";
+
+  const WATCHED_TAGS = Object.freeze(["role/main", "role/translation", "role/supplement"]);
+  const TAG_TO_ACTION = Object.freeze({
+    "role/main": "main",
+    "role/translation": "translation",
+    "role/supplement": "supplement"
+  });
+
+  let _notifierID = null;
+  let _enabled = false;
+
+  function log() {
+    if (typeof Zotero !== "undefined" && Zotero.debug) {
+      Zotero.debug("[zot-link:auto] " + Array.prototype.join.call(arguments, " "));
+    }
+  }
+
+  function safeCall(fn, fallback) {
+    try { return fn(); } catch (_e) { return fallback; }
+  }
+
+  async function getAssetRoot() {
+    if (!Zotero || !Zotero.Prefs) return null;
+    const root = safeCall(() => Zotero.Prefs.get("baseAttachmentPath"), null);
+    return root || null;
+  }
+
+  async function resolveAbsPath(relativePath) {
+    const assetRoot = await getAssetRoot();
+    if (!assetRoot || !relativePath) return null;
+    const p = Zotero.ZotLink && Zotero.ZotLink.paths;
+    if (!p || !p.absolutePathForRelativePath) return null;
+    return p.absolutePathForRelativePath(relativePath, assetRoot);
+  }
+
+  async function writeLogEntry(parentKey, entry) {
+    if (!parentKey) return;
+    const assetRoot = await getAssetRoot();
+    if (!assetRoot) return;
+
+    const p = Zotero.ZotLink && Zotero.ZotLink.paths;
+    const logDir = p ? p.itemRoot(parentKey) + "/meta" : "_items/" + parentKey + "/meta";
+    const absLogDir = await resolveAbsPath(logDir);
+    if (!absLogDir) return;
+
+    const logFile = absLogDir + "/zot-link-log.jsonl";
+    try {
+      const IOUtils = typeof Components !== "undefined"
+        ? ChromeUtils.importESModule("resource://gre/modules/IOUtils.sys.mjs").IOUtils
+        : null;
+      if (!IOUtils) return;
+
+      // Ensure directory exists.
+      const PathUtils = ChromeUtils.importESModule("resource://gre/modules/PathUtils.sys.mjs").PathUtils;
+      const parentDir = PathUtils.parent(logFile);
+      try { await IOUtils.makeDirectory(parentDir, { createAncestors: true }); } catch (_e) { /* ok */ }
+
+      const line = JSON.stringify(entry) + "\n";
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(line);
+
+      // Append to file.
+      let existing = new Uint8Array(0);
+      try { existing = await IOUtils.read(logFile); } catch (_e) { /* file doesn't exist yet */ }
+      const combined = new Uint8Array(existing.length + bytes.length);
+      combined.set(existing, 0);
+      combined.set(bytes, existing.length);
+      await IOUtils.write(logFile, combined);
+    } catch (e) {
+      log("log write error:", e.message || String(e));
+    }
+  }
+
+  function extractRoleFromTags(tags) {
+    for (const tag of (tags || [])) {
+      const t = String(tag.tag || tag).trim().toLowerCase();
+      if (WATCHED_TAGS.includes(t)) return t;
+    }
+    return null;
+  }
+
+  async function handleAutoConvert(itemID) {
+    if (!_enabled) return;
+
+    let item;
+    try {
+      item = Zotero.Items.get(itemID);
+      if (!item || !item.isAttachment || !item.isAttachment()) return;
+    } catch (e) {
+      log("cannot get item", itemID, e.message || String(e));
+      return;
+    }
+
+    // Only convert imported files; skip already-linked ones.
+    const linkedMode = Zotero.Attachments ? Zotero.Attachments.LINK_MODE_LINKED_FILE : 2;
+    const importedMode = Zotero.Attachments ? Zotero.Attachments.LINK_MODE_IMPORTED_FILE : 0;
+    const currentMode = safeCall(() => item.attachmentLinkMode, null);
+    if (currentMode !== importedMode) return;
+
+    // Extract role tag from the item's current tags.
+    let tags;
+    try { tags = item.getTags ? item.getTags() : []; } catch (_e) { tags = []; }
+    const roleTag = extractRoleFromTags(tags);
+    if (!roleTag) return;
+
+    const actionKey = TAG_TO_ACTION[roleTag];
+    if (!actionKey) return;
+
+    log("auto-convert item", itemID, "role", roleTag, "→", actionKey);
+
+    // Run preflight.
+    const preview = Zotero.ZotLink && Zotero.ZotLink.preview;
+    const convert = Zotero.ZotLink && Zotero.ZotLink.convert;
+    if (!preview || !convert) return;
+
+    const sel = {
+      count: 1,
+      hasAttachment: true,
+      hasParent: false,
+      hasNote: false,
+      items: [item]
+    };
+
+    let preflightResult;
+    try {
+      const IOUtils = typeof Components !== "undefined"
+        ? ChromeUtils.importESModule("resource://gre/modules/IOUtils.sys.mjs").IOUtils
+        : null;
+      preflightResult = await preview.previewForSelectionWithPreflight(actionKey, sel, Zotero, IOUtils);
+    } catch (e) {
+      log("preflight error:", e.message || String(e));
+      await writeLogEntry(null, {
+        timestamp: new Date().toISOString(),
+        action: "convert-imported-to-linked",
+        attachment_key_old: item.key || null,
+        role: actionKey,
+        status: "failed",
+        error: "preflight: " + (e.message || String(e))
+      });
+      return;
+    }
+
+    if (preflightResult.status === "blocked") {
+      log("auto-convert blocked:", preflightResult.reason);
+      await writeLogEntry(preflightResult.parentKey, {
+        timestamp: new Date().toISOString(),
+        action: "convert-imported-to-linked",
+        parent_key: preflightResult.parentKey,
+        attachment_key_old: item.key || null,
+        role: actionKey,
+        target_path: preflightResult.targetRelativePath,
+        status: "blocked",
+        error: preflightResult.reason
+      });
+      return;
+    }
+
+    // Execute conversion.
+    let result;
+    try {
+      result = await convert.convertImportedToLinked({
+        item,
+        actionKey,
+        parentKey: preflightResult.parentKey,
+        targetRelativePath: preflightResult.targetRelativePath,
+        title: preflightResult.title,
+        tag: preflightResult.tag,
+        skipCopy: !!preflightResult.skipCopy,
+        updateOnly: !!preflightResult.updateOnly
+      });
+    } catch (e) {
+      result = { status: "failed", reason: "exception: " + (e.message || String(e)) };
+    }
+
+    log("auto-convert result:", result.status, result.reason || "");
+
+    // Write log entry.
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      action: "convert-imported-to-linked",
+      parent_key: preflightResult.parentKey || result.parentKey || null,
+      attachment_key_old: item.key || null,
+      attachment_key_new: result.newItemKey || null,
+      role: actionKey,
+      target_path: result.targetRelativePath || preflightResult.targetRelativePath || null,
+      status: result.status,
+      error: result.reason || null
+    };
+
+    await writeLogEntry(logEntry.parent_key, logEntry);
+  }
+
+  // Debounce: Zotero fires multiple tag events per change. Group by itemID.
+  let _pending = new Set();
+  let _timer = null;
+
+  function scheduleConvert(itemID) {
+    _pending.add(itemID);
+    if (_timer) return;
+    _timer = setTimeout(async () => {
+      const ids = Array.from(_pending);
+      _pending.clear();
+      _timer = null;
+      for (const id of ids) {
+        try { await handleAutoConvert(id); } catch (e) { log("handler error:", e.message || String(e)); }
+      }
+    }, 200);
+  }
+
+  const observer = {
+    notify(event, type, ids) {
+      if (!_enabled) return;
+      if (type !== "item-tag") return;
+      for (const id of (ids || [])) {
+        scheduleConvert(id);
+      }
+    }
+  };
+
+  function start() {
+    if (_notifierID) return;
+    try {
+      _notifierID = Zotero.Notifier.registerObserver(observer, ["item-tag"]);
+      _enabled = true;
+      log("Notifier started");
+    } catch (e) {
+      log("Notifier start failed:", e.message || String(e));
+    }
+  }
+
+  function stop() {
+    _enabled = false;
+    if (_timer) { clearTimeout(_timer); _timer = null; }
+    _pending.clear();
+    if (_notifierID) {
+      try { Zotero.Notifier.unregisterObserver(_notifierID); } catch (_e) { /* noop */ }
+      _notifierID = null;
+    }
+  }
+
+  function isRunning() {
+    return _enabled;
+  }
+
+  if (typeof Zotero !== "undefined") {
+    Zotero.ZotLink = Zotero.ZotLink || {};
+    Zotero.ZotLink.autoConvert = { start, stop, isRunning, WATCHED_TAGS };
+  }
+})();

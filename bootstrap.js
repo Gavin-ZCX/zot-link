@@ -41,6 +41,7 @@ async function startup({ id, version, rootURI }, reason) {
   Services.scriptloader.loadSubScript(rootURI + "src/paths.js");
   Services.scriptloader.loadSubScript(rootURI + "src/preview.js");
   Services.scriptloader.loadSubScript(rootURI + "src/convert.js");
+  Services.scriptloader.loadSubScript(rootURI + "src/autoConvert.js");
   Services.scriptloader.loadSubScript(rootURI + "src/menus.js");
   Services.scriptloader.loadSubScript(rootURI + "src/contextMenu.js");
 
@@ -60,11 +61,20 @@ async function startup({ id, version, rootURI }, reason) {
 
   // Listen for future windows.
   Services.wm.addListener(ZotLink.windowListener);
+
+  // Start tag-triggered auto-conversion.
+  if (ZotLink.autoConvert && typeof ZotLink.autoConvert.start === "function") {
+    ZotLink.autoConvert.start();
+  }
 }
 
 async function shutdown({ id, version, rootURI }, reason) {
   log("shutdown reason=" + reason);
   if (!ZotLink) return;
+
+  if (ZotLink.autoConvert && typeof ZotLink.autoConvert.stop === "function") {
+    ZotLink.autoConvert.stop();
+  }
 
   Services.wm.removeListener(ZotLink.windowListener);
   const enumerator = Services.wm.getEnumerator("navigator:browser");
