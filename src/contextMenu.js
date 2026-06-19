@@ -110,7 +110,7 @@
       const mi = doc.createXULElement("menuitem");
       mi.id = menuItemId(action.key);
       mi.setAttribute("label", action.label);
-      mi.addEventListener("command", () => {
+      mi.addEventListener("command", async () => {
         try {
           const sel = getSelectionInfo(window);
           Zotero.debug("[zot-link] context menu command: " + action.key
@@ -118,8 +118,9 @@
             + ", attachment=" + sel.hasAttachment
             + ", parent=" + sel.hasParent
             + ", note=" + sel.hasNote + ")");
-          if (Zotero.ZotLink.preview && typeof Zotero.ZotLink.preview.previewForSelection === "function") {
-            const preview = Zotero.ZotLink.preview.previewForSelection(action.key, sel, Zotero);
+          if (Zotero.ZotLink.preview && typeof Zotero.ZotLink.preview.previewForSelectionWithPreflight === "function") {
+            const ioUtils = typeof IOUtils !== "undefined" ? IOUtils : null;
+            const preview = await Zotero.ZotLink.preview.previewForSelectionWithPreflight(action.key, sel, Zotero, ioUtils);
             Zotero.debug("[zot-link] preview: " + action.key
               + " status=" + preview.status
               + " target=" + preview.targetRelativePath

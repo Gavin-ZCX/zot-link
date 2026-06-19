@@ -86,6 +86,56 @@
     return "attachment.pdf";
   }
 
+  function assetRootFromZotero(zotero) {
+    if (!zotero || !zotero.Prefs || typeof zotero.Prefs.get !== "function") return null;
+    const root = safeCall(() => zotero.Prefs.get("baseAttachmentPath"), null);
+    return root ? String(root) : null;
+  }
+
+  function absolutePathForRelativePath(relativePath, assetRoot) {
+    if (!relativePath || !assetRoot) return null;
+    const root = String(assetRoot).replace(/[\\/]+$/g, "");
+    const rel = String(relativePath).replace(/^[\\/]+/g, "");
+    const sep = root.includes("\\") ? "\\" : "/";
+    return root + sep + rel.replace(/[\\/]+/g, sep);
+  }
+
+  async function pathExists(relativePath, assetRoot, ioUtils) {
+    const absPath = absolutePathForRelativePath(relativePath, assetRoot);
+    if (!absPath || !ioUtils || typeof ioUtils.exists !== "function") return false;
+    return !!(await ioUtils.exists(absPath));
+  }
+
+  async function collectExistingRelativePaths(input) {
+    const opts = input || {};
+    const role = actionToRole(opts.actionKey);
+    const pathHelpers = paths();
+    const parentKey = opts.parentKey;
+    const assetRoot = opts.assetRoot;
+    const ioUtils = opts.ioUtils;
+    if (!role || !pathHelpers || !parentKey || !assetRoot || !ioUtils) return [];
+
+    const candidates = [];
+    if (role === "main") {
+      candidates.push(pathHelpers.sourceDir(parentKey) + "/main.pdf");
+    } else if (role === "markdown") {
+      candidates.push(pathHelpers.mdDir(parentKey) + "/paper.md");
+    } else if (role === "translation") {
+      const filename = pathHelpers.basename(opts.originalFilename) || "translation.pdf";
+      candidates.push(pathHelpers.translationsDir(parentKey) + "/" + filename);
+    } else if (role === "supplement") {
+      for (let i = 1; i <= 99; i++) {
+        candidates.push(pathHelpers.sourceDir(parentKey) + "/" + pathHelpers.supplementFilename(i));
+      }
+    }
+
+    const existing = [];
+    for (const rel of candidates) {
+      if (await pathExists(rel, assetRoot, ioUtils)) existing.push(rel);
+    }
+    return existing;
+  }
+
   function block(actionKey, role, reason, extra) {
     return Object.assign({
       actionKey,
@@ -100,7 +150,9 @@
       targetFilename: null,
       title: null,
       tag: null,
-      supplementNumber: null
+      supplementNumber: null,
+      assetRoot: null,
+      targetExists: null
     }, extra || {});
   }
 
@@ -150,7 +202,9 @@
       targetFilename: target.filename || null,
       title,
       tag,
-      supplementNumber: target.supplementNumber || null
+      supplementNumber: target.supplementNumber || null,
+      assetRoot: opts.assetRoot || null,
+      targetExists: opts.targetExists == null ? null : !!opts.targetExists
     };
   }
 
@@ -181,6 +235,57 @@
     });
   }
 
+  async function previewForSelectionWithPreflight(actionKey, selectionInfo, zotero, ioUtils) {
+    const sel = selectionInfo || {};
+    const role = actionToRole(actionKey);
+    if (!role) return block(actionKey, null, "unknown-action");
+    if (sel.count !== 1 || !sel.items || sel.items.length !== 1) {
+      return block(actionKey, role, "select-exactly-one-item");
+    }
+
+    const z = zotero || Zotero;
+    const item = sel.items[0];
+    const isAttachment = itemIsAttachment(item);
+    const isParent = itemIsParent(item);
+    const parentKey = getParentKeyForItem(item, z);
+    const originalFilename = role === "markdown" ? "paper.md" : getAttachmentFilename(item);
+    const currentPath = getCurrentPath(item);
+    const assetRoot = assetRootFromZotero(z);
+    const existingRelativePaths = await collectExistingRelativePaths({
+      actionKey,
+      parentKey,
+      originalFilename,
+      assetRoot,
+      ioUtils
+    });
+    const draft = buildPreview({
+      actionKey,
+      parentKey,
+      originalFilename,
+      currentPath,
+      isAttachment,
+      isParent,
+      isNote: itemIsNote(item),
+      existingRelativePaths,
+      assetRoot
+    });
+    const targetExists = draft.targetRelativePath
+      ? await pathExists(draft.targetRelativePath, assetRoot, ioUtils)
+      : null;
+    return buildPreview({
+      actionKey,
+      parentKey,
+      originalFilename,
+      currentPath,
+      isAttachment,
+      isParent,
+      isNote: itemIsNote(item),
+      existingRelativePaths,
+      assetRoot,
+      targetExists
+    });
+  }
+
   function valueOrDash(value) {
     return value == null || value === "" ? "—" : String(value);
   }
@@ -204,8 +309,10 @@
       "  reason      = " + valueOrDash(p.reason),
       "  parent key  = " + valueOrDash(p.parentKey),
       "  source      = " + valueOrDash(p.currentPath),
+      "  asset root  = " + valueOrDash(p.assetRoot),
       "  original    = " + valueOrDash(p.originalFilename),
       "  target      = " + valueOrDash(p.targetRelativePath),
+      "  exists?     = " + valueOrDash(p.targetExists),
       "  linked path = " + valueOrDash(p.linkedAttachmentPath),
       "  title       = " + valueOrDash(p.title),
       "  tag         = " + valueOrDash(p.tag)
@@ -224,8 +331,13 @@
       getParentKeyForItem,
       getCurrentPath,
       getAttachmentFilename,
+      assetRootFromZotero,
+      absolutePathForRelativePath,
+      pathExists,
+      collectExistingRelativePaths,
       buildPreview,
       previewForSelection,
+      previewForSelectionWithPreflight,
       formatPreviewMessage
     };
   }

@@ -18,6 +18,12 @@ const sandbox = {
         if (id === 42) return { key: "PARENT42" };
         return null;
       }
+    },
+    Prefs: {
+      get(name) {
+        if (name === "baseAttachmentPath") return "C:\\OneDrive\\Zotero";
+        return null;
+      }
     }
   }
 };
@@ -61,6 +67,10 @@ assert.equal(preview.actionToRole("translation"), "translation");
 assert.equal(preview.actionToRole("supplement"), "supplement");
 assert.equal(preview.actionToRole("markdown"), "markdown");
 assert.equal(preview.actionToRole("bogus"), null);
+assert.equal(
+  preview.absolutePathForRelativePath("_items/PARENT42/source/main.pdf", "C:\\OneDrive\\Zotero"),
+  "C:\\OneDrive\\Zotero\\_items\\PARENT42\\source\\main.pdf"
+);
 
 const mainPreview = plain(preview.previewForSelection("main", {
   count: 1,
@@ -82,7 +92,9 @@ assert.deepEqual(mainPreview, {
   targetFilename: "main.pdf",
   title: "Main PDF",
   tag: "role/main",
-  supplementNumber: null
+  supplementNumber: null,
+  assetRoot: null,
+  targetExists: null
 });
 
 const translationPreview = plain(preview.buildPreview({
@@ -153,5 +165,36 @@ assert.ok(msg.includes("linked path = attachments:_items/PARENT42/source/main.pd
 assert.ok(msg.includes("title       = Main PDF"));
 assert.ok(msg.includes("tag         = role/main"));
 assert.ok(msg.includes("status      = ready"));
+
+const fakeIOUtils = {
+  async exists(path) {
+    return path === "C:\\OneDrive\\Zotero\\_items\\PARENT42\\source\\main.pdf"
+      || path === "C:\\OneDrive\\Zotero\\_items\\PARENT42\\source\\supplement-01.pdf"
+      || path === "C:\\OneDrive\\Zotero\\_items\\PARENT42\\source\\supplement-02.pdf";
+  }
+};
+
+const preflightMain = plain(await preview.previewForSelectionWithPreflight("main", {
+  count: 1,
+  hasAttachment: true,
+  hasParent: false,
+  hasNote: false,
+  items: [fakeAttachment({ filename: "Paper.pdf" })]
+}, sandbox.Zotero, fakeIOUtils));
+assert.equal(preflightMain.status, "blocked");
+assert.equal(preflightMain.reason, "main-target-exists");
+assert.equal(preflightMain.assetRoot, "C:\\OneDrive\\Zotero");
+assert.equal(preflightMain.targetExists, true);
+
+const preflightSupplement = plain(await preview.previewForSelectionWithPreflight("supplement", {
+  count: 1,
+  hasAttachment: true,
+  hasParent: false,
+  hasNote: false,
+  items: [fakeAttachment({ filename: "Supp.pdf" })]
+}, sandbox.Zotero, fakeIOUtils));
+assert.equal(preflightSupplement.status, "ready");
+assert.equal(preflightSupplement.targetRelativePath, "_items/PARENT42/source/supplement-03.pdf");
+assert.equal(preflightSupplement.targetExists, false);
 
 console.log("preview tests OK");
