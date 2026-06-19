@@ -53,8 +53,10 @@ Object.assign(Zotero.ZotLink, {
               + "Auto convert: " + autoStatus + ".\n"
               + "observerID: " + (autoDetails && autoDetails.notifierID ? autoDetails.notifierID : "—") + "\n"
               + "lastEvent: " + (autoDetails && autoDetails.lastEvent ? JSON.stringify(autoDetails.lastEvent) : "—") + "\n"
+              + "lastParsedIDs: " + (autoDetails && autoDetails.lastParsedIDs ? JSON.stringify(autoDetails.lastParsedIDs) : "—") + "\n"
               + "lastHandled: " + (autoDetails && autoDetails.lastHandled ? JSON.stringify(autoDetails.lastHandled) : "—") + "\n"
-              + "lastError: " + (autoDetails && autoDetails.lastError ? autoDetails.lastError : "—");
+              + "lastError: " + (autoDetails && autoDetails.lastError ? autoDetails.lastError : "—") + "\n"
+              + "lastSkipped: " + (autoDetails && autoDetails.lastSkipped ? autoDetails.lastSkipped : "—");
             window.alert(msg);
             Zotero.debug("[zot-link] tools menu clicked");
           } catch (e) {

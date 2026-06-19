@@ -23,6 +23,8 @@
   let _lastEvent = null;
   let _lastHandled = null;
   let _lastError = null;
+  let _lastParsedIDs = null;
+  let _lastSkipped = null;
 
   let ConsoleServices = null;
   try {
@@ -103,13 +105,34 @@
     return null;
   }
 
+  function parseNotifierItemID(rawID, type, extraData) {
+    if (type === "item-tag") {
+      // Zotero item-tag notifier ids are compound strings such as
+      // "<tagID>-<itemID>". The attachment itemID is the second half.
+      const str = String(rawID);
+      if (str.includes("-")) {
+        const parsed = parseInt(str.split("-").pop(), 10);
+        if (Number.isInteger(parsed)) return parsed;
+      }
+      if (extraData && extraData[rawID] && extraData[rawID].itemID) {
+        const parsed = parseInt(extraData[rawID].itemID, 10);
+        if (Number.isInteger(parsed)) return parsed;
+      }
+    }
+    const parsed = parseInt(rawID, 10);
+    return Number.isInteger(parsed) ? parsed : null;
+  }
+
   async function handleAutoConvert(itemID) {
     if (!_enabled) return;
 
     let item;
     try {
       item = Zotero.Items.get(itemID);
-      if (!item || typeof item.isAttachment !== "function" || !item.isAttachment()) return;
+      if (!item || typeof item.isAttachment !== "function" || !item.isAttachment()) {
+        _lastSkipped = "item " + itemID + " is not an attachment";
+        return;
+      }
     } catch (e) {
       _lastError = "cannot get item " + itemID + ": " + (e.message || String(e));
       log(_lastError);
@@ -132,6 +155,7 @@
     const currentMode = safeCall(() => item.attachmentLinkMode, null);
     log("item", itemID, "linkMode:", currentMode);
     if (currentMode !== importedMode && currentMode !== null) {
+      _lastSkipped = "item " + itemID + " not imported_file, mode=" + currentMode;
       log("skipping item", itemID, "- not imported_file (mode:", currentMode, ")");
       return;
     }
@@ -141,7 +165,10 @@
     try { tags = item.getTags ? item.getTags() : []; } catch (_e) { tags = []; }
     log("item", itemID, "tags:", JSON.stringify(tags));
     const roleTag = extractRoleFromTags(tags);
-    if (!roleTag) return;
+    if (!roleTag) {
+      _lastSkipped = "item " + itemID + " has no watched role tag";
+      return;
+    }
 
     const actionKey = TAG_TO_ACTION[roleTag];
     if (!actionKey) return;
@@ -255,9 +282,14 @@
     notify(event, type, ids, extraData) {
       if (!_enabled) return;
       if (type !== "item-tag" && type !== "item") return;
-      _lastEvent = { event, type, ids: Array.from(ids || []), at: new Date().toISOString() };
-      log("event:", event, "type:", type, "ids:", (ids || []).join(","));
-      for (const id of (ids || [])) {
+      const rawIDs = Array.from(ids || []);
+      const parsedIDs = rawIDs
+        .map((id) => parseNotifierItemID(id, type, extraData))
+        .filter((id) => id !== null);
+      _lastEvent = { event, type, ids: rawIDs, at: new Date().toISOString() };
+      _lastParsedIDs = parsedIDs;
+      log("event:", event, "type:", type, "ids:", rawIDs.join(","), "parsed:", parsedIDs.join(","));
+      for (const id of parsedIDs) {
         scheduleConvert(id);
       }
     }
@@ -294,8 +326,10 @@
       notifierID: _notifierID,
       watchedTags: WATCHED_TAGS,
       lastEvent: _lastEvent,
+      lastParsedIDs: _lastParsedIDs,
       lastHandled: _lastHandled,
-      lastError: _lastError
+      lastError: _lastError,
+      lastSkipped: _lastSkipped
     };
   }
 

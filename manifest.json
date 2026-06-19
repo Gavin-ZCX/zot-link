@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "zot-link",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "Convert Zotero imported attachments into structured linked files under _items/{KEY}/.",
   "author": "zot-link contributors",
   "applications": {
