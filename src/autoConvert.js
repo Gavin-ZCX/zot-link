@@ -52,6 +52,24 @@
     return root || null;
   }
 
+  function getIOUtils() {
+    if (typeof IOUtils !== "undefined") return IOUtils;
+    try {
+      return ChromeUtils.importESModule("resource://gre/modules/IOUtils.sys.mjs").IOUtils;
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  function getPathUtils() {
+    if (typeof PathUtils !== "undefined") return PathUtils;
+    try {
+      return ChromeUtils.importESModule("resource://gre/modules/PathUtils.sys.mjs").PathUtils;
+    } catch (_e) {
+      return null;
+    }
+  }
+
   async function resolveAbsPath(relativePath) {
     const assetRoot = await getAssetRoot();
     if (!assetRoot || !relativePath) return null;
@@ -72,15 +90,13 @@
 
     const logFile = absLogDir + "/zot-link-log.jsonl";
     try {
-      const IOUtils = typeof Components !== "undefined"
-        ? ChromeUtils.importESModule("resource://gre/modules/IOUtils.sys.mjs").IOUtils
-        : null;
-      if (!IOUtils) return;
+      const IOUtilsLocal = getIOUtils();
+      if (!IOUtilsLocal) return;
 
       // Ensure directory exists.
-      const PathUtils = ChromeUtils.importESModule("resource://gre/modules/PathUtils.sys.mjs").PathUtils;
-      const parentDir = PathUtils.parent(logFile);
-      try { await IOUtils.makeDirectory(parentDir, { createAncestors: true }); } catch (_e) { /* ok */ }
+      const PathUtilsLocal = getPathUtils();
+      const parentDir = PathUtilsLocal ? PathUtilsLocal.parent(logFile) : logFile.replace(/[\\/][^\\/]+$/, "");
+      try { await IOUtilsLocal.makeDirectory(parentDir, { createAncestors: true }); } catch (_e) { /* ok */ }
 
       const line = JSON.stringify(entry) + "\n";
       const encoder = new TextEncoder();
@@ -88,11 +104,11 @@
 
       // Append to file.
       let existing = new Uint8Array(0);
-      try { existing = await IOUtils.read(logFile); } catch (_e) { /* file doesn't exist yet */ }
+      try { existing = await IOUtilsLocal.read(logFile); } catch (_e) { /* file doesn't exist yet */ }
       const combined = new Uint8Array(existing.length + bytes.length);
       combined.set(existing, 0);
       combined.set(bytes, existing.length);
-      await IOUtils.write(logFile, combined);
+      await IOUtilsLocal.write(logFile, combined);
     } catch (e) {
       log("log write error:", e.message || String(e));
     }
@@ -262,10 +278,8 @@
 
     let preflightResult;
     try {
-      const IOUtils = typeof Components !== "undefined"
-        ? ChromeUtils.importESModule("resource://gre/modules/IOUtils.sys.mjs").IOUtils
-        : null;
-      preflightResult = await preview.previewForSelectionWithPreflight(actionKey, sel, Zotero, IOUtils);
+      const ioUtils = getIOUtils();
+      preflightResult = await preview.previewForSelectionWithPreflight(actionKey, sel, Zotero, ioUtils);
     } catch (e) {
       log("preflight error:", e.message || String(e));
       _lastError = "preflight: " + (e.message || String(e));
