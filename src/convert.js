@@ -248,6 +248,19 @@
       } catch (e) { Zotero.logError(e); }
     }
 
+    // --- Step 4b: Ensure Main PDF is the best/default attachment ------------
+    if (actionKey === "main" && clone) {
+      try {
+        // Set dateAdded far in the past so it's the oldest PDF →
+        // picked by getBestAttachments() which sorts by dateAdded ASC.
+        const epoch = "2000-01-01 00:00:00";
+        await Zotero.DB.queryAsync(
+          "UPDATE items SET dateAdded=? WHERE itemID=?",
+          [epoch, clone.id]
+        );
+      } catch (e) { Zotero.logError(e); }
+    }
+
     // --- Step 5: Erase original (only after all steps succeed) ---------------
     try {
       await item.erase();
@@ -332,6 +345,9 @@
     if (tag && attachment && typeof attachment.addTag === "function") {
       try { attachment.addTag(tag); await attachment.save(); } catch (e) { Zotero.logError(e); }
     }
+
+    // Markdown is supplementary text; keep its dateAdded later than Main.
+    // No explicit date adjustment needed — Main PDF epoch already handles priority.
 
     return Object.assign({
       status: "success",
