@@ -87,6 +87,9 @@ const sandbox = {
     File: {
       pathToFile(p) { return p; },
       getFileHash(p) { return createHash("sha256").update(readFileSync(p)).digest("hex"); }
+    },
+    DB: {
+      async queryAsync() {}
     }
   },
   IOUtils: {
