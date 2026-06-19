@@ -58,6 +58,8 @@ npm run build
    "C:\Program Files\Zotero\zotero.exe" -P
    ```
    选择 `Create Profile…`，命名 `zot-link-dev`，**自定义** profile 目录到一个空文件夹。
+   注意：Zotero 的 Firefox profile 与 Zotero data directory 是两回事；测试 profile 中也要确认
+   `Advanced → Files and Folders → Data Directory Location` 指向测试目录，避免误打开日常库。
 3. 启用开发模式（可选但推荐）：在 `about:config` 中查找
    `extensions.experiments.enabled` 并设为 `true`；同时打开
    `Tools → Developer → Error Console` 查看 `[zot-link]` 日志。

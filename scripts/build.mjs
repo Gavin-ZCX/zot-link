@@ -12,7 +12,7 @@ const version = manifest.version;
 const xpiName = `zot-link-${version}.xpi`;
 
 // Files / directories to ship inside the xpi.
-const includeRoots = ["manifest.json", "bootstrap.js", "src"];
+const includeRoots = ["manifest.json", "bootstrap.js", "src", "README.md", "LICENSE", "NOTICE"];
 
 function collectFiles(rootRel) {
   const abs = join(repoRoot, rootRel);

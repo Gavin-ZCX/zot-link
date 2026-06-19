@@ -4,13 +4,11 @@
   "version": "0.0.1",
   "description": "Convert Zotero imported attachments into structured linked files under _items/{KEY}/.",
   "author": "zot-link contributors",
-  "homepage_url": "https://github.com/yourname/zot-link",
   "applications": {
     "zotero": {
       "id": "zot-link@local",
-      "update_url": "",
       "strict_min_version": "7.0",
-      "strict_max_version": "9.*"
+      "strict_max_version": "9.0.*"
     }
   }
 }
