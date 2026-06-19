@@ -50,7 +50,8 @@ npm run build
 
 当前兼容声明使用 `strict_min_version: "6.999"`、`strict_max_version: "9.*"`，与 Zotero 9
 插件兼容范围一致；插件 ID 使用 `zot-link@local.invalid`，避免 `@local` 这类非域名式 ID 被
-Add-on Manager 拒绝。
+Add-on Manager 拒绝。`update_url` 是 Zotero 9 插件 manifest 的必填字段；当前为占位 HTTPS URL，
+正式发布前应替换为真实 updates.json。
 
 ## 安装到 Zotero 9 进行本地验证
 
