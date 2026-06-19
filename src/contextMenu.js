@@ -125,9 +125,14 @@
               + " status=" + preview.status
               + " target=" + preview.targetRelativePath
               + " reason=" + preview.reason);
-            if (preview.status === "ready" && Zotero.ZotLink.convert) {
-              const confirmed = window.confirm(
-                "即将执行附件转换。此操作不可逆。\\n\\n"
+            if ((preview.status === "ready" || preview.status === "ready-skip-copy" || preview.status === "update-only") && Zotero.ZotLink.convert) {
+              const sourceLabel = preview.updateOnly ? "当前已为 linked attachment" :
+                preview.skipCopy ? "文件已在目标位置（跳过复制）" :
+                "即将复制文件并创建 linked attachment";
+              const actionLabel = preview.updateOnly ? "将更新标题和标签：" : "此操作不可逆。";
+              const confirmed = preview.updateOnly ? true : window.confirm(
+                sourceLabel + "\\n\\n"
+                + actionLabel + "\\n\\n"
                 + "source: " + (preview.currentPath || "—") + "\\n"
                 + "target: " + (preview.targetRelativePath || "—") + "\\n"
                 + "title:  " + (preview.title || "—") + "\\n"
@@ -142,13 +147,17 @@
                   targetRelativePath: preview.targetRelativePath,
                   title: preview.title,
                   tag: preview.tag,
-                  targetExists: preview.targetExists
+                  skipCopy: !!preview.skipCopy,
+                  updateOnly: !!preview.updateOnly
                 });
                 Zotero.debug("[zot-link] convert result: " + JSON.stringify(result));
                 if (result.status === "success") {
-                  window.alert("转换成功！\\n\\ntarget: " + (result.targetRelativePath || "—"));
+                  const skipped = result.skipped && result.skipped.length
+                    ? "\\n(skipped: " + result.skipped.join(", ") + ")"
+                    : "";
+                  window.alert("操作成功！" + skipped + "\\n\\ntarget: " + (result.targetRelativePath || "—"));
                 } else {
-                  window.alert("转换失败。\\n\\nstatus: " + result.status + "\\nreason: " + (result.reason || "—") + "\\n\\n原附件未受影响。");
+                  window.alert("操作失败。\\n\\nstatus: " + result.status + "\\nreason: " + (result.reason || "—") + "\\n\\n原附件未受影响。");
                 }
               }
             } else {

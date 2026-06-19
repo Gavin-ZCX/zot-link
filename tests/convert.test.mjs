@@ -165,7 +165,6 @@ const result = plain(await convert.convertImportedToLinked({
   targetRelativePath: "_items/PARENT42/source/main.pdf",
   title: "Main PDF",
   tag: "role/main",
-  targetExists: false,
   zotero: sandbox.Zotero,
   ioUtils: sandbox.IOUtils
 }));
@@ -205,7 +204,7 @@ const blockedResult = plain(await convert.convertImportedToLinked({
 }));
 
 assert.equal(blockedResult.status, "blocked");
-assert.equal(blockedResult.reason, "main-target-exists");
+assert.equal(blockedResult.reason, "target-exists");
 assert.equal(erasedItems.length, 0, "Must not erase on conflict");
 assert.equal(savedItems.length, 0, "Must not save on conflict");
 assert.equal(readFileSync(expectedTarget, "utf8"), "EXISTING MAIN PDF", "Existing file must not be overwritten");
@@ -226,7 +225,6 @@ const failResult = plain(await convert.convertImportedToLinked({
   targetRelativePath: "_items/PARENT42/source/main.pdf",
   title: "Main PDF",
   tag: "role/main",
-  targetExists: false,
   zotero: sandbox.Zotero,
   ioUtils: badIOUtils
 }));
@@ -255,7 +253,6 @@ const cloneFailResult = plain(await convert.convertImportedToLinked({
   targetRelativePath: "_items/PARENT42/source/main.pdf",
   title: "Main PDF",
   tag: "role/main",
-  targetExists: false,
   zotero: sandbox.Zotero,
   ioUtils: sandbox.IOUtils
 }));

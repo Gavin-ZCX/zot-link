@@ -78,8 +78,8 @@ Add-on Manager 拒绝。`update_url` 是 Zotero 9 插件 manifest 的必填字�
 5. 验证：
    - 重启 Zotero。
    - `Tools` 菜单底部应出现 `zot-link`。
-   - 点击应弹出 “zot-link v0.0.6 — skeleton loaded.” 的 alert。
-   - `Error Console` 中应看到 `[zot-link] startup version=0.0.6` 与
+   - 点击应弹出 "zot-link v0.0.7 — skeleton loaded." 的 alert。
+   - `Error Console` 中应看到 `[zot-link] startup version=0.0.7` 与
      `[zot-link] menuitem attached to window`。
 
 ## 当前实现状态

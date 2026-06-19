@@ -94,7 +94,9 @@ assert.deepEqual(mainPreview, {
   tag: "role/main",
   supplementNumber: null,
   assetRoot: null,
-  targetExists: null
+  targetExists: null,
+  skipCopy: false,
+  updateOnly: false
 });
 
 const translationPreview = plain(preview.buildPreview({

@@ -189,7 +189,7 @@
     });
     const tag = roleHelpers.roleTagForRole(role);
 
-    return {
+    var result = {
       actionKey,
       role,
       status: target.status,
@@ -204,8 +204,15 @@
       tag,
       supplementNumber: target.supplementNumber || null,
       assetRoot: opts.assetRoot || null,
-      targetExists: opts.targetExists == null ? null : !!opts.targetExists
+      targetExists: opts.targetExists == null ? null : !!opts.targetExists,
+      skipCopy: !!opts.skipCopy,
+      updateOnly: !!opts.updateOnly
     };
+    if (opts._overrideStatus) {
+      result.status = opts._overrideStatus;
+      result.reason = opts._overrideReason || null;
+    }
+    return result;
   }
 
   function previewForSelection(actionKey, selectionInfo, zotero) {
@@ -272,6 +279,27 @@
     const targetExists = draft.targetRelativePath
       ? await pathExists(draft.targetRelativePath, assetRoot, ioUtils)
       : null;
+    const sourcePath = getCurrentPath(item);
+    const targetAbsPath = assetRoot && draft.targetRelativePath
+      ? absolutePathForRelativePath(draft.targetRelativePath, assetRoot)
+      : null;
+    const sameFile = sourcePath && targetAbsPath
+      && String(sourcePath).replace(/\\+/g, "/").replace(/\/+$/g, "").toLowerCase()
+        === String(targetAbsPath).replace(/\\+/g, "/").replace(/\/+$/g, "").toLowerCase();
+    const alreadyLinked = Zotero.ZotLink.convert
+      && Zotero.ZotLink.convert.isProbablyAlreadyLinked
+      && Zotero.ZotLink.convert.isProbablyAlreadyLinked(item, draft.targetRelativePath, z);
+    let finalStatus = draft.status;
+    let finalReason = draft.reason;
+    if (alreadyLinked) {
+      finalStatus = "update-only";
+      finalReason = "already-linked-correct-path";
+    } else if (finalStatus === "blocked" && sameFile) {
+      finalStatus = "ready";
+      finalReason = null;
+    } else if (finalStatus === "ready" && sameFile) {
+      finalStatus = "ready-skip-copy";
+    }
     return buildPreview({
       actionKey,
       parentKey,
@@ -282,7 +310,11 @@
       isNote: itemIsNote(item),
       existingRelativePaths,
       assetRoot,
-      targetExists
+      targetExists,
+      skipCopy: (finalStatus === "ready-skip-copy" || finalStatus === "ready" && sameFile) || undefined,
+      updateOnly: alreadyLinked || undefined,
+      _overrideStatus: finalStatus,
+      _overrideReason: finalReason
     });
   }
 
