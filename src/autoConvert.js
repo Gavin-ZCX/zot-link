@@ -219,13 +219,15 @@
       return handleAutoConvert(imported[0].id, roleTag);
     }
 
-    // Only convert imported files; skip already-linked ones.
+    // Imported files are converted; linked files are allowed through so the
+    // existing update-only path can normalize title/tag. Other modes are skipped.
     const importedMode = Zotero.Attachments ? Zotero.Attachments.LINK_MODE_IMPORTED_FILE : 0;
+    const linkedMode = Zotero.Attachments ? Zotero.Attachments.LINK_MODE_LINKED_FILE : 2;
     const currentMode = safeCall(() => item.attachmentLinkMode, null);
     log("item", itemID, "linkMode:", currentMode);
-    if (currentMode !== importedMode && currentMode !== null) {
-      recordCandidate(itemID, { status: "skipped", reason: "not imported_file, mode=" + currentMode });
-      log("skipping item", itemID, "- not imported_file (mode:", currentMode, ")");
+    if (currentMode !== importedMode && currentMode !== linkedMode && currentMode !== null) {
+      recordCandidate(itemID, { status: "skipped", reason: "unsupported linkMode=" + currentMode });
+      log("skipping item", itemID, "- unsupported linkMode:", currentMode);
       return;
     }
 
