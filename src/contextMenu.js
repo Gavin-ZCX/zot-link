@@ -118,7 +118,16 @@
             + ", attachment=" + sel.hasAttachment
             + ", parent=" + sel.hasParent
             + ", note=" + sel.hasNote + ")");
-          window.alert(dryRunMessage(action.key, sel));
+          if (Zotero.ZotLink.preview && typeof Zotero.ZotLink.preview.previewForSelection === "function") {
+            const preview = Zotero.ZotLink.preview.previewForSelection(action.key, sel, Zotero);
+            Zotero.debug("[zot-link] preview: " + action.key
+              + " status=" + preview.status
+              + " target=" + preview.targetRelativePath
+              + " reason=" + preview.reason);
+            window.alert(Zotero.ZotLink.preview.formatPreviewMessage(preview, sel));
+          } else {
+            window.alert(dryRunMessage(action.key, sel));
+          }
         } catch (e) {
           Zotero.logError(e);
         }

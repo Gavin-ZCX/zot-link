@@ -33,6 +33,7 @@ zot-link/
 ├── src/
 │   ├── roles.js           角色、标签、附件标题纯函数
 │   ├── paths.js           `_items/{KEY}` 目标路径纯函数
+│   ├── preview.js         右键动作 dry-run 预览纯函数
 │   ├── menus.js           工具菜单注册（Zotero.ZotLink）
 │   └── contextMenu.js     右键菜单 dry-run 骨架
 ├── tests/                 Node 纯函数测试
@@ -77,15 +78,15 @@ Add-on Manager 拒绝。`update_url` 是 Zotero 9 插件 manifest 的必填字�
 5. 验证：
    - 重启 Zotero。
    - `Tools` 菜单底部应出现 `zot-link`。
-   - 点击应弹出 “zot-link v0.0.3 — skeleton loaded.” 的 alert。
-   - `Error Console` 中应看到 `[zot-link] startup version=0.0.3` 与
+   - 点击应弹出 “zot-link v0.0.4 — skeleton loaded.” 的 alert。
+   - `Error Console` 中应看到 `[zot-link] startup version=0.0.4` 与
      `[zot-link] menuitem attached to window`。
 
 ## 当前实现状态
 
 - Tools 菜单与 Zotero 条目列表右键菜单已可加载。
-- 右键菜单仍为 dry-run，只弹出选择信息，不做文件或 Zotero 条目变更。
-- `src/roles.js` / `src/paths.js` 已固化角色、标题和 `_items/{KEY}` 路径规则，并由 Node 测试覆盖。
+- 右键菜单仍为 dry-run，但会预览目标路径、linked path、附件标题、角色标签和 blocked 原因；不做文件或 Zotero 条目变更。
+- `src/roles.js` / `src/paths.js` / `src/preview.js` 已固化角色、标题、`_items/{KEY}` 路径与 dry-run 预览规则，并由 Node 测试覆盖。
 
 ## 开发热加载（可选）
 

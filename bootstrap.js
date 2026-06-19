@@ -39,6 +39,7 @@ async function startup({ id, version, rootURI }, reason) {
 
   Services.scriptloader.loadSubScript(rootURI + "src/roles.js");
   Services.scriptloader.loadSubScript(rootURI + "src/paths.js");
+  Services.scriptloader.loadSubScript(rootURI + "src/preview.js");
   Services.scriptloader.loadSubScript(rootURI + "src/menus.js");
   Services.scriptloader.loadSubScript(rootURI + "src/contextMenu.js");
 
