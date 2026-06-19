@@ -78,14 +78,14 @@ Add-on Manager 拒绝。`update_url` 是 Zotero 9 插件 manifest 的必填字�
 5. 验证：
    - 重启 Zotero。
    - `Tools` 菜单底部应出现 `zot-link`。
-   - 点击应弹出 “zot-link v0.0.5 — skeleton loaded.” 的 alert。
-   - `Error Console` 中应看到 `[zot-link] startup version=0.0.5` 与
+   - 点击应弹出 “zot-link v0.0.6 — skeleton loaded.” 的 alert。
+   - `Error Console` 中应看到 `[zot-link] startup version=0.0.6` 与
      `[zot-link] menuitem attached to window`。
 
 ## 当前实现状态
 
 - Tools 菜单与 Zotero 条目列表右键菜单已可加载。
-- 右键菜单仍为 dry-run，但会预览目标路径、linked path、附件标题、角色标签、目标是否已存在和 blocked 原因；不做文件或 Zotero 条目变更。
+- 右键菜单：`ready` 项会弹出确认对话框，确认后执行真实转换（copy→verify→clone→linked→erase original）；`blocked` 项仍只预览。
 - `src/roles.js` / `src/paths.js` / `src/preview.js` 已固化角色、标题、`_items/{KEY}` 路径与 dry-run 预览规则，并由 Node 测试覆盖。
 
 ## 开发热加载（可选）

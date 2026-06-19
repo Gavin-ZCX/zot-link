@@ -133,6 +133,14 @@
     return "attachments:" + trimSlashes(rel);
   }
 
+  function absolutePathForRelativePath(relativePath, assetRoot) {
+    if (!relativePath || !assetRoot) return null;
+    const root = String(assetRoot).replace(/[\\/]+$/g, "");
+    const rel = String(relativePath).replace(/^[\\/]+/, "");
+    const sep = root.includes("\\") ? "\\" : "/";
+    return root + sep + rel.replace(/[\\/]+/g, sep);
+  }
+
   if (typeof Zotero !== "undefined") {
     Zotero.ZotLink = Zotero.ZotLink || {};
     Zotero.ZotLink.paths = {
@@ -149,7 +157,8 @@
       nextSupplementNumber,
       supplementFilename,
       targetPathForRole,
-      relativeAttachmentPath
+      relativeAttachmentPath,
+      absolutePathForRelativePath
     };
   }
 })();

@@ -125,7 +125,35 @@
               + " status=" + preview.status
               + " target=" + preview.targetRelativePath
               + " reason=" + preview.reason);
-            window.alert(Zotero.ZotLink.preview.formatPreviewMessage(preview, sel));
+            if (preview.status === "ready" && Zotero.ZotLink.convert) {
+              const confirmed = window.confirm(
+                "即将执行附件转换。此操作不可逆。\\n\\n"
+                + "source: " + (preview.currentPath || "—") + "\\n"
+                + "target: " + (preview.targetRelativePath || "—") + "\\n"
+                + "title:  " + (preview.title || "—") + "\\n"
+                + "tag:    " + (preview.tag || "—") + "\\n\\n"
+                + "是否继续？"
+              );
+              if (confirmed) {
+                const result = await Zotero.ZotLink.convert.convertImportedToLinked({
+                  item: sel.items[0],
+                  actionKey: preview.actionKey,
+                  parentKey: preview.parentKey,
+                  targetRelativePath: preview.targetRelativePath,
+                  title: preview.title,
+                  tag: preview.tag,
+                  targetExists: preview.targetExists
+                });
+                Zotero.debug("[zot-link] convert result: " + JSON.stringify(result));
+                if (result.status === "success") {
+                  window.alert("转换成功！\\n\\ntarget: " + (result.targetRelativePath || "—"));
+                } else {
+                  window.alert("转换失败。\\n\\nstatus: " + result.status + "\\nreason: " + (result.reason || "—") + "\\n\\n原附件未受影响。");
+                }
+              }
+            } else {
+              window.alert(Zotero.ZotLink.preview.formatPreviewMessage(preview, sel));
+            }
           } else {
             window.alert(dryRunMessage(action.key, sel));
           }

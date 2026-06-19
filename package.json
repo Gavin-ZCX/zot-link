@@ -1,11 +1,11 @@
 {
   "name": "zot-link",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": true,
   "description": "Zotero 9 plugin: convert imported attachments to structured linked files under _items/{KEY}/.",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "node --check bootstrap.js && node --check src/roles.js && node --check src/paths.js && node --check src/preview.js && node --check src/menus.js && node --check src/contextMenu.js && node --check scripts/build.mjs && node tests/contextMenu.test.mjs && node tests/rolesPaths.test.mjs && node tests/preview.test.mjs",
+    "check": "node --check bootstrap.js && node --check src/roles.js && node --check src/paths.js && node --check src/preview.js && node --check src/convert.js && node --check src/menus.js && node --check src/contextMenu.js && node --check scripts/build.mjs && node tests/contextMenu.test.mjs && node tests/rolesPaths.test.mjs && node tests/preview.test.mjs && node tests/convert.test.mjs",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "license": "GPL-3.0-only"
