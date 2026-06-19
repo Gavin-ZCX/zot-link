@@ -38,6 +38,7 @@ async function startup({ id, version, rootURI }, reason) {
   await waitForZotero();
 
   Services.scriptloader.loadSubScript(rootURI + "src/menus.js");
+  Services.scriptloader.loadSubScript(rootURI + "src/contextMenu.js");
 
   ZotLink = Zotero.ZotLink;
   if (!ZotLink) {

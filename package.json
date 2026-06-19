@@ -5,6 +5,7 @@
   "description": "Zotero 9 plugin: convert imported attachments to structured linked files under _items/{KEY}/.",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "check": "node --check bootstrap.js && node --check src/menus.js && node --check src/contextMenu.js && node --check scripts/build.mjs && node tests/contextMenu.test.mjs",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "license": "GPL-3.0-only"
