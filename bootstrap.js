@@ -37,6 +37,8 @@ async function startup({ id, version, rootURI }, reason) {
   log("startup version=" + version + " reason=" + reason);
   await waitForZotero();
 
+  Services.scriptloader.loadSubScript(rootURI + "src/roles.js");
+  Services.scriptloader.loadSubScript(rootURI + "src/paths.js");
   Services.scriptloader.loadSubScript(rootURI + "src/menus.js");
   Services.scriptloader.loadSubScript(rootURI + "src/contextMenu.js");
 
