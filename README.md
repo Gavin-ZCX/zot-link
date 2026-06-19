@@ -28,7 +28,7 @@ Zotero 9 桌面端插件骨架。最终目标：把 Zotero **导入式附件**�
 
 ```
 zot-link/
-├── manifest.json          WebExtension manifest（Zotero 7/9 兼容）
+├── manifest.json          WebExtension manifest（Zotero 9 兼容）
 ├── bootstrap.js           插件生命周期（startup/shutdown/install/uninstall）
 ├── src/
 │   └── menus.js           工具菜单注册（Zotero.ZotLink）
@@ -47,6 +47,10 @@ npm run build
 ```
 
 产出：`dist/zot-link-<version>.xpi`。该文件是一个标准 zip，根目录含 `manifest.json`。
+
+当前兼容声明使用 `strict_min_version: "6.999"`、`strict_max_version: "9.*"`，与 Zotero 9
+插件兼容范围一致；插件 ID 使用 `zot-link@local.invalid`，避免 `@local` 这类非域名式 ID 被
+Add-on Manager 拒绝。
 
 ## 安装到 Zotero 9 进行本地验证
 
