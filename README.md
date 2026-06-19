@@ -1,134 +1,94 @@
 # zot-link
 
-`zot-link` 是一个面向 **Zotero 9 桌面端** 的本地插件，用于把 Zotero 的导入式附件（`imported_file` / Zotero storage 副本）整理为 OneDrive 文献库中的结构化 **linked attachments**。
+`zot-link` is a Zotero 9 desktop plugin for converting Zotero imported-file attachments into structured linked attachments under an `_items/{ITEM_KEY}/` directory.
 
-它的目标不是做通用文件管理器，而是作为文献知识管理流水线中的一个很窄、可验证、可自动化的 Zotero 附件整理组件。
+It is designed for users who keep a Zotero library together with a file-based paper archive, and who want Zotero attachments to point to predictable, portable files instead of keeping duplicate PDFs inside Zotero `storage/`.
 
-当前版本：`0.0.17`
+Current version: `0.0.17`
+
+> Status: early but usable local-development release. The manual conversion flow and tag-triggered automation flow have been tested in a local Zotero 9 setup. Use a test profile or a backed-up library before running it on an important library.
 
 ---
 
-## 一句话说明
+## What it does
 
-`zot-link` 负责把 Zotero 条目下的 PDF / Markdown 附件挂接到统一目录结构：
+`zot-link` organizes attachments for a Zotero parent item into a fixed directory layout:
 
 ```text
-C:\OneDrive\Zotero\_items\{ITEM_KEY}\...
-```
-
-并在安全条件满足时释放 Zotero storage 中的 imported attachment 副本。
-
----
-
-## 适用场景
-
-适合用于这样的文献管理体系：
-
-1. Zotero 负责文献条目、元数据、引用、附件索引；
-2. OneDrive 文献库负责真实文件长期存储；
-3. Hermes / agent 负责编排文献处理流程；
-4. Obsidian / Markdown 系统负责笔记、卡片和知识组织；
-5. `zot-link` 只负责 Zotero 附件从 storage 到 linked attachment 的安全转换与挂接。
-
----
-
-## 能力边界
-
-### 插件负责
-
-- Zotero 9 桌面端插件加载；
-- Zotero Tools 菜单诊断；
-- Zotero 条目/附件右键菜单；
-- 角色化附件整理：
-  - Main PDF；
-  - Translation PDF；
-  - Supplement PDF；
-  - Markdown Full Text；
-- imported attachment → linked attachment 的安全转换；
-- 已在目标目录的 imported attachment 跳过复制并直接转 linked；
-- 已经是 linked attachment 的 update-only：只更新标题/标签；
-- 父条目下已有 `md/paper.md` 时，将 Markdown 文件挂接为 linked attachment；
-- tag 触发的 agent 自动化接口；
-- 写入 `_items/{KEY}/meta/zot-link-log.jsonl` 供 agent 检查结果。
-
-### 插件不负责
-
-以下能力不属于 `zot-link` 的职责：
-
-- 不做 Doc2X；
-- 不做 scanscipdf；
-- 不做 OCR；
-- 不做 AI 笔记；
-- 不生成 Obsidian 卡片；
-- 不做 RAG；
-- 不做主题分类；
-- 不从 `_inbox` 自动创建 Zotero parent item；
-- 不决定批量迁移时无角色附件应该是什么类型；
-- 不作为通用文件移动/重命名工具。
-
-如果 agent 构建完整知识管理流程，应把这些任务放在 `zot-link` 外部完成，只把最终需要 Zotero 桌面内部 API 的附件转换/挂接交给本插件。
-
----
-
-## 目标目录结构
-
-以 Zotero parent item key 为目录名：
-
-```text
-_items/{KEY}/
+_items/{ITEM_KEY}/
 ├── source/
 │   ├── main.pdf
 │   └── supplement-NN.pdf
 ├── translations/
-│   └── {原文件名}.pdf
+│   └── {original-filename}.pdf
 ├── md/
 │   └── paper.md
 └── meta/
     └── zot-link-log.jsonl
 ```
 
-角色对应关系：
+It supports four attachment roles:
 
-| 角色 | 目标路径 | Zotero 附件标题 | 角色标签 |
+| Role | Target path | Zotero attachment title | Tag |
 |---|---|---|---|
 | Main PDF | `_items/{KEY}/source/main.pdf` | `Main PDF` | `role/main` |
-| Translation PDF | `_items/{KEY}/translations/{原文件名}` | `Translation PDF - {原文件名}` | `role/translation` |
+| Translation PDF | `_items/{KEY}/translations/{original-filename}` | `Translation PDF - {original-filename}` | `role/translation` |
 | Supplement PDF | `_items/{KEY}/source/supplement-NN.pdf` | `Supplement PDF - NN` | `role/supplement` |
-| Markdown Full Text | `_items/{KEY}/md/paper.md` | `Markdown Full Text` | 无 role 标签 |
+| Markdown full text | `_items/{KEY}/md/paper.md` | `Markdown Full Text` | none |
 
-注意：附件标题不使用 `01/02/03/04` 数字前缀。默认打开优先级通过 `dateAdded` 等元数据控制，而不是把排序序号写进标题。
+The `_items` directory is resolved relative to Zotero's **Linked Attachment Base Directory**.
 
 ---
 
-## 核心安全规则
+## What it does not do
 
-`zot-link` 的转换逻辑遵循保守安全策略：
+`zot-link` intentionally has a narrow scope. It does not:
+
+- create Zotero parent items from an inbox folder;
+- decide automatically which of several PDFs is the main paper;
+- run OCR;
+- run Doc2X or other document converters;
+- generate AI notes;
+- create Obsidian notes;
+- manage an Obsidian vault;
+- perform RAG indexing;
+- classify papers by topic;
+- provide a general-purpose file renaming or file moving system.
+
+Those tasks can be handled by other tools. `zot-link` focuses only on Zotero attachment conversion and linking, where Zotero desktop APIs are required.
+
+---
+
+## Safety model
+
+A normal imported-file conversion follows this sequence:
 
 ```text
-copy → verify size/hash → create linked clone
-→ transfer annotations/relations/fulltext
-→ verify linked attachment resolves
-→ erase original imported attachment/storage
+copy source file
+→ verify size/hash
+→ create linked Zotero attachment clone
+→ transfer annotations, notes, relations, and full-text index
+→ verify the linked attachment resolves
+→ erase the original imported attachment
 ```
 
-安全约束：
+Safety rules:
 
-- 不简单 `move` 原文件；
-- `main.pdf` 已存在且不是同一文件时不覆盖；
-- 任一步失败，原 imported attachment 不删除；
-- copy 失败会清理半成品目标文件；
-- clone/save 失败会清理本次 copy 出来的目标文件；
-- 已在目标路径的文件走 `ready-skip-copy`，跳过复制但仍创建 linked attachment；
-- 已经是正确 linked path 的附件走 `update-only`，只更新标题/标签；
-- 批量/自动流程中遇到无角色、多候选、不确定情况时不猜。
+- It does not simply move files.
+- It does not overwrite an existing `main.pdf` or other conflicting target.
+- If any step fails, the original imported attachment is left untouched.
+- If a copied target file is produced by a failed conversion, the plugin attempts to clean it up.
+- If the source file is already in the target location, the plugin uses a `ready-skip-copy` path and skips the copy step.
+- If the attachment is already a linked attachment with the correct path, the plugin uses `update-only` and only normalizes title/tag metadata.
+- Batch or automated flows do not guess when the role is ambiguous.
 
 ---
 
-## 手动功能
+## Manual usage
 
-### 右键附件
+### Convert a PDF attachment
 
-在 Zotero 中央条目列表中，右键附件，可见：
+Right-click a Zotero attachment in the central item tree and choose one of:
 
 ```text
 zot-link: 整理为 Main PDF
@@ -136,56 +96,50 @@ zot-link: 整理为 Translation PDF
 zot-link: 整理为 Supplement PDF
 ```
 
-执行逻辑：
+The plugin first shows a preflight preview. If the operation is safe, it asks for confirmation before making changes.
 
-1. 先做 preflight；
-2. 如果 blocked，只显示预览，不执行；
-3. 如果 ready，弹出确认框；
-4. 用户确认后执行真实转换；
-5. 成功后原 imported attachment 被释放，只保留 linked attachment。
+Common preflight states:
 
-常见状态：
-
-| 状态 | 含义 |
+| State | Meaning |
 |---|---|
-| `ready` | 可复制到目标路径并转换 |
-| `ready-skip-copy` | 源文件已经在目标位置，跳过复制，直接创建 linked attachment |
-| `update-only` | 已经是正确 linked attachment，只更新标题/标签 |
-| `blocked` | 不安全或条件不足，不执行 |
+| `ready` | Target does not exist; the file can be copied and converted. |
+| `ready-skip-copy` | The file is already at the target path; conversion can skip copying. |
+| `update-only` | The attachment is already linked correctly; only title/tag metadata is updated. |
+| `blocked` | The operation is unsafe or missing required information. Nothing is changed. |
 
-### 右键父条目
+### Link Markdown full text
 
-在父条目上可见：
+Right-click a Zotero parent item and choose:
 
 ```text
 zot-link: 挂接 Markdown Full Text
 ```
 
-该操作不会生成 Markdown。它只检查：
+The plugin checks for:
 
 ```text
 _items/{KEY}/md/paper.md
 ```
 
-如果文件存在，则通过 Zotero linked attachment 挂接为：
+If the file exists, it creates a linked attachment titled:
 
 ```text
 Markdown Full Text
 ```
 
-如果文件不存在，返回：
+If the file does not exist, it returns:
 
 ```text
 blocked: md-file-not-found
 ```
 
+`zot-link` does not generate `paper.md`; it only links it if another workflow has already created it.
+
 ---
 
-## Agent 自动化接口
+## Automation via tags
 
-### 触发方式
-
-Agent 不需要直接调用插件函数。推荐通过 Zotero 标签触发：
+`zot-link` can be triggered by adding role tags to Zotero attachments:
 
 ```text
 role/main
@@ -193,182 +147,145 @@ role/translation
 role/supplement
 ```
 
-典型外部操作：
+This is useful for scripts or external automation tools that can tag Zotero items.
 
-```bash
-zot tag <attachment-key> role/main
-zot tag <attachment-key> role/translation
-zot tag <attachment-key> role/supplement
-```
+Behavior:
 
-插件通过 Zotero Notifier 监听 `item-tag` / `item` 事件，并自动处理。
+- An imported-file attachment with a role tag is converted automatically.
+- A linked-file attachment with a role tag may be normalized via `update-only` if it already points to the expected path.
+- If a role tag is added to a parent item, the plugin only falls back to a child attachment when there is exactly one imported attachment below that parent. If there are zero or multiple candidates, it does not guess.
+- Automated conversion does not show a confirmation dialog.
+- Results are written to JSONL logs.
 
-### 自动触发行为
-
-- imported attachment：执行完整安全转换；
-- linked attachment：如果路径正确，执行 update-only，更新标题/标签；
-- role 标签加在父条目上：只有当父条目下恰好一个 imported attachment 时才 fallback 到该附件；多个附件时不猜；
-- 自动流程不弹确认框；
-- 结果写 JSONL 日志。
-
-### 自动化日志
-
-日志位置：
+Log file:
 
 ```text
 _items/{KEY}/meta/zot-link-log.jsonl
 ```
 
-示例：
+Example entry:
 
 ```json
 {
   "timestamp": "2026-06-19T13:37:22.690Z",
   "action": "convert-imported-to-linked",
-  "parent_key": "CVAVIG2N",
+  "parent_key": "ABCD1234",
   "attachment_key_old": "OLDKEY",
   "attachment_key_new": "NEWKEY",
   "role": "main",
-  "target_path": "_items/CVAVIG2N/source/main.pdf",
+  "target_path": "_items/ABCD1234/source/main.pdf",
   "status": "success",
   "error": null
 }
 ```
 
-Agent 可以读取该日志判断每个附件是否处理成功。
+---
 
-### Tools 菜单诊断
+## Tools menu diagnostics
 
-`Tools → zot-link` 会显示当前插件和自动化状态：
+The plugin adds a `Tools → zot-link` entry. It displays current status and recent automation diagnostics, including:
 
-```text
-zot-link v0.0.17 — skeleton loaded.
-Manual actions: ready.
-Auto convert: running.
-observerID: ...
-lastEvent: ...
-lastParsedIDs: ...
-lastCandidates: ...
-lastHandled: ...
-lastError: ...
-lastSkipped: ...
-```
+- plugin version;
+- whether manual actions are available;
+- whether automatic conversion is running;
+- the Zotero Notifier observer ID;
+- the most recent Notifier event;
+- parsed candidate item IDs;
+- per-candidate handling/skipping information;
+- the last handled item;
+- the last error.
 
-排查含义：
-
-| 字段 | 含义 |
-|---|---|
-| `Auto convert` | auto 模块是否运行 |
-| `observerID` | Zotero Notifier observer 是否注册成功 |
-| `lastEvent` | 最近一次 Zotero 事件 |
-| `lastParsedIDs` | 从 Zotero 复合事件 ID 中解析出的候选 ID |
-| `lastCandidates` | 每个候选 ID 的处理/跳过原因 |
-| `lastHandled` | 最近真正进入自动流程的 item |
-| `lastError` | 最近错误 |
-| `lastSkipped` | 最近跳过原因 |
+This is intended to make local troubleshooting possible without relying only on Zotero's Error Console.
 
 ---
 
-## Obsidian 联动建议
+## Installation
 
-`zot-link` 不直接生成 Obsidian 卡片，也不管理 Obsidian vault。
-
-推荐联动方式：
-
-1. agent 在 Obsidian 中生成文献卡片；
-2. 卡片 YAML/frontmatter 中记录 Zotero item key；
-3. agent 在 Zotero 条目下创建 URL attachment，例如：
+Download the `.xpi` from the repository release page, then in Zotero:
 
 ```text
-obsidian://open?vault=<vault-name>&file=<card-path>
+Tools → Plugins → gear icon → Install Plugin From File…
 ```
 
-这样 Zotero 中点击 URL attachment 即可打开对应 Obsidian 卡片。
+Select:
 
-是否创建该 URL attachment，应该由 agent/知识管理流程决定，而不是 `zot-link` 自动决定。
+```text
+zot-link-<version>.xpi
+```
+
+Restart Zotero after installation.
+
+Recommended Zotero setting:
+
+```text
+Settings → Advanced → Files and Folders → Linked Attachment Base Directory
+```
+
+Set this to the directory that contains `_items/`.
 
 ---
 
-## 安装与验证
+## Building from source
 
-### 构建
+Requirements:
+
+- Node.js
+- npm
+- Zotero 9 for runtime testing
+
+Build and test:
 
 ```bash
 npm run check
 npm run build
 ```
 
-产物：
+The packaged plugin is written to:
 
 ```text
 dist/zot-link-<version>.xpi
 ```
 
-### 安装
-
-在 Zotero 中：
-
-```text
-Tools → Plugins → 齿轮图标 → Install Plugin From File…
-```
-
-选择：
-
-```text
-dist/zot-link-0.0.17.xpi
-```
-
-建议每次安装新版后重启 Zotero。
-
-### 基本验证
-
-1. 点击 `Tools → zot-link`；
-2. 应显示版本号、手动功能状态、自动功能状态；
-3. 右键一个 imported PDF 附件，选择 `整理为 Main PDF`；
-4. preflight 显示 target、title、tag；
-5. 确认后检查 linked attachment 是否可打开；
-6. 检查 `_items/{KEY}/meta/zot-link-log.jsonl`。
+The build script creates a standard XPI/ZIP archive with `manifest.json` at the archive root.
 
 ---
 
-## 开发与测试
-
-### 项目结构
+## Development layout
 
 ```text
-bootstrap.js              Zotero 插件生命周期
+bootstrap.js              Zotero plugin lifecycle
 manifest.json             Zotero 9 manifest
-src/roles.js              角色、标签、附件标题纯函数
-src/paths.js              _items/{KEY} 路径计算
-src/preview.js            dry-run / preflight 预览
-src/convert.js            安全转换与 linkExistingFile
-src/autoConvert.js        tag 触发自动化接口
-src/menus.js              Tools 菜单与窗口生命周期
-src/contextMenu.js        Zotero 右键菜单
-tests/*.mjs               Node 纯函数 / 转换流程测试
-scripts/build.mjs         XPI 打包脚本
+src/roles.js              role, tag, and attachment-title helpers
+src/paths.js              _items/{KEY} path planning
+src/preview.js            dry-run and preflight logic
+src/convert.js            safe conversion and Markdown linkFromFile logic
+src/autoConvert.js        tag-triggered automation
+src/menus.js              Tools menu integration
+src/contextMenu.js        Zotero item-tree context menu
+tests/*.mjs               Node tests
+scripts/build.mjs         XPI packaging script
 ```
-
-### 测试
-
-```bash
-npm run check
-```
-
-当前覆盖：
-
-- context menu 基础行为；
-- role/title/tag 规则；
-- `_items/{KEY}` 路径规则；
-- dry-run preview；
-- imported → linked 转换安全路径；
-- target exists / copy fail / clone fail 保护路径。
 
 ---
 
-## Manifest 兼容性说明
+## Test coverage
 
-Zotero 9 本地开发使用：
+`npm run check` currently runs syntax checks and Node tests for:
+
+- context menu behavior;
+- role/tag/title rules;
+- `_items/{KEY}` path planning;
+- preflight preview states;
+- imported-to-linked conversion logic;
+- failure cases such as existing targets, copy failure, and clone failure.
+
+Runtime behavior still depends on Zotero desktop APIs, so destructive behavior should be tested in a disposable Zotero profile before using it on an important library.
+
+---
+
+## Zotero compatibility notes
+
+The manifest currently targets Zotero 9:
 
 ```json
 {
@@ -383,40 +300,34 @@ Zotero 9 本地开发使用：
 }
 ```
 
-注意：
+Notes:
 
-- `applications.zotero.update_url` 在 Zotero 9 中必须存在；
-- 当前 `update_url` 是本地开发占位 URL，正式发布前应替换；
-- 插件 ID 使用域名式 `@local.invalid`，避免 Add-on Manager 拒绝非域名式 ID；
-- 当前实现目标是 Zotero 9，不承诺 Zotero 6/7/8 完整兼容。
+- Zotero 9 requires `applications.zotero.update_url` to be present in the manifest.
+- The current `update_url` is a placeholder for local/development distribution.
+- The plugin ID uses a domain-style local ID: `zot-link@local.invalid`.
+- Zotero 6/7/8 compatibility is not guaranteed.
 
 ---
 
-## License / NOTICE
+## Obsidian and note-taking workflows
+
+`zot-link` does not create Obsidian notes. A compatible workflow can still link Zotero and Obsidian by using Zotero URL attachments such as:
+
+```text
+obsidian://open?vault=<vault-name>&file=<card-path>
+```
+
+That URL attachment should be created by the user's note-taking or automation workflow, not by `zot-link` itself.
+
+---
+
+## License and provenance
 
 License: `GPL-3.0-only`
 
-本项目没有直接 fork ZotMoov，也没有复制 ZotMoov 源码。设计上借鉴了 ZotMoov 的核心转换思路：
+The project is not a fork of ZotMoov and does not contain copied ZotMoov source code. It does, however, follow the same general idea of safely replacing imported Zotero attachments with linked-file attachments through Zotero desktop APIs.
 
-```text
-clone → LINK_MODE_LINKED_FILE → save → transfer child items/relations/fulltext → erase original
-```
-
-详见：
+See:
 
 - [LICENSE](./LICENSE)
 - [NOTICE](./NOTICE)
-
----
-
-## 给 agent 的集成摘要
-
-如果你是自动化 agent，需要记住：
-
-1. `zot-link` 只处理 Zotero 附件，不生成笔记、不做 OCR、不做 Obsidian 卡片；
-2. Main / translation / supplement 用 role 标签触发；
-3. Markdown 必须先由外部流程生成 `_items/{KEY}/md/paper.md`，插件只负责挂接；
-4. 无 role 的批量迁移不要默认正文；
-5. 多 PDF 条目必须先由外部流程或用户确定角色；
-6. 转换结果看 `_items/{KEY}/meta/zot-link-log.jsonl`；
-7. 不要直接移动 Zotero storage 文件；让插件通过 Zotero 内部 API 完成转换。
