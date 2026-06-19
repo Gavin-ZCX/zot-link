@@ -309,7 +309,7 @@
     const parentItem = opts.parentItem;
     const parentKey = opts.parentKey;
     const targetRelativePath = opts.targetRelativePath;
-    const title = opts.title || "04 Markdown Full Text";
+    const title = opts.title || "Markdown Full Text";
     const tag = opts.tag;
     const contentType = opts.contentType || "text/markdown";
     const zotero = opts.zotero || (typeof Zotero !== "undefined" ? Zotero : null);

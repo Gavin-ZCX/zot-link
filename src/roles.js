@@ -50,16 +50,16 @@
   function attachmentTitleForRole(role, originalFilename, options) {
     const normalized = normalizeRole(role);
     const opts = options || {};
-    if (normalized === ROLE_MAIN) return "01 Main PDF";
+    if (normalized === ROLE_MAIN) return "Main PDF";
     if (normalized === ROLE_TRANSLATION) {
       const name = originalFilename ? String(originalFilename) : "translation.pdf";
-      return "02 Translation PDF - " + name;
+      return "Translation PDF - " + name;
     }
     if (normalized === ROLE_SUPPLEMENT) {
       const n = opts.supplementNumber != null ? opts.supplementNumber : 1;
-      return "03 Supplement PDF - " + pad2(n);
+      return "Supplement PDF - " + pad2(n);
     }
-    if (normalized === ROLE_MARKDOWN) return "04 Markdown Full Text";
+    if (normalized === ROLE_MARKDOWN) return "Markdown Full Text";
     return null;
   }
 

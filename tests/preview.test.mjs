@@ -90,7 +90,7 @@ assert.deepEqual(mainPreview, {
   targetRelativePath: "_items/PARENT42/source/main.pdf",
   linkedAttachmentPath: "attachments:_items/PARENT42/source/main.pdf",
   targetFilename: "main.pdf",
-  title: "01 Main PDF",
+  title: "Main PDF",
   tag: "role/main",
   supplementNumber: null,
   assetRoot: null,
@@ -108,7 +108,7 @@ const translationPreview = plain(preview.buildPreview({
   isParent: false
 }));
 assert.equal(translationPreview.targetRelativePath, "_items/PARENT42/translations/TR-论文.pdf");
-assert.equal(translationPreview.title, "02 Translation PDF - TR-论文.pdf");
+assert.equal(translationPreview.title, "Translation PDF - TR-论文.pdf");
 assert.equal(translationPreview.tag, "role/translation");
 
 const supplementPreview = plain(preview.buildPreview({
@@ -119,7 +119,7 @@ const supplementPreview = plain(preview.buildPreview({
   existingRelativePaths: ["_items/PARENT42/source/supplement-01.pdf"]
 }));
 assert.equal(supplementPreview.targetRelativePath, "_items/PARENT42/source/supplement-02.pdf");
-assert.equal(supplementPreview.title, "03 Supplement PDF - 02");
+assert.equal(supplementPreview.title, "Supplement PDF - 02");
 assert.equal(supplementPreview.supplementNumber, 2);
 
 const markdownPreview = plain(preview.previewForSelection("markdown", {
@@ -131,7 +131,7 @@ const markdownPreview = plain(preview.previewForSelection("markdown", {
 }, sandbox.Zotero));
 assert.equal(markdownPreview.status, "ready");
 assert.equal(markdownPreview.targetRelativePath, "_items/PARENT99/md/paper.md");
-assert.equal(markdownPreview.title, "04 Markdown Full Text");
+assert.equal(markdownPreview.title, "Markdown Full Text");
 assert.equal(markdownPreview.tag, null);
 
 const wrongScope = plain(preview.buildPreview({
@@ -164,7 +164,7 @@ const msg = preview.formatPreviewMessage(mainPreview, {
 assert.ok(msg.includes("DRY-RUN ONLY"));
 assert.ok(msg.includes("target      = _items/PARENT42/source/main.pdf"));
 assert.ok(msg.includes("linked path = attachments:_items/PARENT42/source/main.pdf"));
-assert.ok(msg.includes("title       = 01 Main PDF"));
+assert.ok(msg.includes("title       = Main PDF"));
 assert.ok(msg.includes("tag         = role/main"));
 assert.ok(msg.includes("status      = ready"));
 

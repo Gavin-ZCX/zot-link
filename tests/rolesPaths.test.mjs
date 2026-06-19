@@ -44,10 +44,10 @@ assert.equal(roles.roleTagForRole("translation"), "role/translation");
 assert.equal(roles.roleTagForRole("supplement"), "role/supplement");
 assert.equal(roles.roleTagForRole("markdown"), null);
 
-assert.equal(roles.attachmentTitleForRole("main", "Original.pdf"), "01 Main PDF");
-assert.equal(roles.attachmentTitleForRole("translation", "TR-论文.pdf"), "02 Translation PDF - TR-论文.pdf");
-assert.equal(roles.attachmentTitleForRole("supplement", "data.pdf", { supplementNumber: 3 }), "03 Supplement PDF - 03");
-assert.equal(roles.attachmentTitleForRole("markdown", "paper.md"), "04 Markdown Full Text");
+assert.equal(roles.attachmentTitleForRole("main", "Original.pdf"), "Main PDF");
+assert.equal(roles.attachmentTitleForRole("translation", "TR-论文.pdf"), "Translation PDF - TR-论文.pdf");
+assert.equal(roles.attachmentTitleForRole("supplement", "data.pdf", { supplementNumber: 3 }), "Supplement PDF - 03");
+assert.equal(roles.attachmentTitleForRole("markdown", "paper.md"), "Markdown Full Text");
 
 // --- roles: explicit/tag/default resolution --------------------------------
 assert.deepEqual(
