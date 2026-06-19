@@ -20,6 +20,9 @@
 
   let _notifierID = null;
   let _enabled = false;
+  let _lastEvent = null;
+  let _lastHandled = null;
+  let _lastError = null;
 
   let ConsoleServices = null;
   try {
@@ -108,7 +111,8 @@
       item = Zotero.Items.get(itemID);
       if (!item || typeof item.isAttachment !== "function" || !item.isAttachment()) return;
     } catch (e) {
-      log("cannot get item", itemID, e.message || String(e));
+      _lastError = "cannot get item " + itemID + ": " + (e.message || String(e));
+      log(_lastError);
       return;
     }
 
@@ -143,6 +147,7 @@
     if (!actionKey) return;
 
     log("auto-convert item", itemID, "role", roleTag, "→", actionKey);
+    _lastHandled = { itemID, roleTag, actionKey, at: new Date().toISOString() };
 
     // Run preflight.
     const preview = Zotero.ZotLink && Zotero.ZotLink.preview;
@@ -165,6 +170,7 @@
       preflightResult = await preview.previewForSelectionWithPreflight(actionKey, sel, Zotero, IOUtils);
     } catch (e) {
       log("preflight error:", e.message || String(e));
+      _lastError = "preflight: " + (e.message || String(e));
       await writeLogEntry(null, {
         timestamp: new Date().toISOString(),
         action: "convert-imported-to-linked",
@@ -178,6 +184,7 @@
 
     if (preflightResult.status === "blocked") {
       log("auto-convert blocked:", preflightResult.reason);
+      _lastError = "blocked: " + preflightResult.reason;
       await writeLogEntry(preflightResult.parentKey, {
         timestamp: new Date().toISOString(),
         action: "convert-imported-to-linked",
@@ -209,6 +216,7 @@
     }
 
     log("auto-convert result:", result.status, result.reason || "");
+    _lastError = result.status === "success" ? null : result.reason || result.status;
 
     // Write log entry.
     const logEntry = {
@@ -247,6 +255,7 @@
     notify(event, type, ids, extraData) {
       if (!_enabled) return;
       if (type !== "item-tag" && type !== "item") return;
+      _lastEvent = { event, type, ids: Array.from(ids || []), at: new Date().toISOString() };
       log("event:", event, "type:", type, "ids:", (ids || []).join(","));
       for (const id of (ids || [])) {
         scheduleConvert(id);
@@ -279,8 +288,19 @@
     return _enabled;
   }
 
+  function getStatus() {
+    return {
+      running: _enabled,
+      notifierID: _notifierID,
+      watchedTags: WATCHED_TAGS,
+      lastEvent: _lastEvent,
+      lastHandled: _lastHandled,
+      lastError: _lastError
+    };
+  }
+
   if (typeof Zotero !== "undefined") {
     Zotero.ZotLink = Zotero.ZotLink || {};
-    Zotero.ZotLink.autoConvert = { start, stop, isRunning, WATCHED_TAGS };
+    Zotero.ZotLink.autoConvert = { start, stop, isRunning, getStatus, WATCHED_TAGS };
   }
 })();

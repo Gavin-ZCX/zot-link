@@ -45,9 +45,16 @@ Object.assign(Zotero.ZotLink, {
             const autoStatus = this.autoConvert && typeof this.autoConvert.isRunning === "function"
               ? (this.autoConvert.isRunning() ? "running" : "stopped")
               : "missing";
+            const autoDetails = this.autoConvert && typeof this.autoConvert.getStatus === "function"
+              ? this.autoConvert.getStatus()
+              : null;
             const msg = "zot-link v" + this.version + " — skeleton loaded.\n"
               + "Manual actions: ready.\n"
-              + "Auto convert: " + autoStatus + ".";
+              + "Auto convert: " + autoStatus + ".\n"
+              + "observerID: " + (autoDetails && autoDetails.notifierID ? autoDetails.notifierID : "—") + "\n"
+              + "lastEvent: " + (autoDetails && autoDetails.lastEvent ? JSON.stringify(autoDetails.lastEvent) : "—") + "\n"
+              + "lastHandled: " + (autoDetails && autoDetails.lastHandled ? JSON.stringify(autoDetails.lastHandled) : "—") + "\n"
+              + "lastError: " + (autoDetails && autoDetails.lastError ? autoDetails.lastError : "—");
             window.alert(msg);
             Zotero.debug("[zot-link] tools menu clicked");
           } catch (e) {
