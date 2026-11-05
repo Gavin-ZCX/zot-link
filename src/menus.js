@@ -48,6 +48,12 @@ Object.assign(Zotero.ZotLink, {
             const autoDetails = this.autoConvert && typeof this.autoConvert.getStatus === "function"
               ? this.autoConvert.getStatus()
               : null;
+            const queueStatus = this.queueWorker && typeof this.queueWorker.isRunning === "function"
+              ? (this.queueWorker.isRunning() ? "running" : "stopped")
+              : "missing";
+            const queueDetails = this.queueWorker && typeof this.queueWorker.getStatus === "function"
+              ? this.queueWorker.getStatus()
+              : null;
             const msg = "zot-link v" + this.version + " — skeleton loaded.\n"
               + "Manual actions: ready.\n"
               + "Auto convert: " + autoStatus + ".\n"
@@ -57,7 +63,15 @@ Object.assign(Zotero.ZotLink, {
               + "lastCandidates: " + (autoDetails && autoDetails.lastCandidateResults ? JSON.stringify(autoDetails.lastCandidateResults) : "—") + "\n"
               + "lastHandled: " + (autoDetails && autoDetails.lastHandled ? JSON.stringify(autoDetails.lastHandled) : "—") + "\n"
               + "lastError: " + (autoDetails && autoDetails.lastError ? autoDetails.lastError : "—") + "\n"
-              + "lastSkipped: " + (autoDetails && autoDetails.lastSkipped ? autoDetails.lastSkipped : "—");
+              + "lastSkipped: " + (autoDetails && autoDetails.lastSkipped ? autoDetails.lastSkipped : "—") + "\n\n"
+              + "Queue worker: " + queueStatus + ".\n"
+              + "queueRoot: " + (queueDetails && queueDetails.queueRelativeRoot ? queueDetails.queueRelativeRoot : "—") + "\n"
+              + "queueAssetRoot: " + (queueDetails && queueDetails.lastAssetRoot ? queueDetails.lastAssetRoot : "—") + "\n"
+              + "queuePendingCount: " + (queueDetails && queueDetails.lastPendingCount != null ? queueDetails.lastPendingCount : "—") + "\n"
+              + "queueDirs: " + (queueDetails && queueDetails.lastQueueDirs ? JSON.stringify(queueDetails.lastQueueDirs) : "—") + "\n"
+              + "queueLastRun: " + (queueDetails && queueDetails.lastRun ? queueDetails.lastRun : "—") + "\n"
+              + "queueLastResults: " + (queueDetails && queueDetails.lastResults ? JSON.stringify(queueDetails.lastResults) : "—") + "\n"
+              + "queueLastError: " + (queueDetails && queueDetails.lastError ? queueDetails.lastError : "—");
             window.alert(msg);
             Zotero.debug("[zot-link] tools menu clicked");
           } catch (e) {

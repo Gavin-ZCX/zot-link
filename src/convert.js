@@ -98,6 +98,20 @@
     return currentPath && targetPath && currentPath.toLowerCase() === targetPath.toLowerCase();
   }
 
+  function findExistingLinkedChild(parentItem, targetRelativePath, zotero) {
+    if (!parentItem || typeof parentItem.getAttachments !== "function") return null;
+    const childIDs = safeCall(() => parentItem.getAttachments() || [], []);
+    if (!childIDs || !childIDs.length) return null;
+    for (const childID of childIDs) {
+      const child = (childID && typeof childID === "object")
+        ? childID
+        : safeCall(() => zotero && zotero.Items && zotero.Items.get(childID), null);
+      if (!child || typeof child.isAttachment !== "function" || !child.isAttachment()) continue;
+      if (isProbablyAlreadyLinked(child, targetRelativePath, zotero)) return child;
+    }
+    return null;
+  }
+
   async function convertImportedToLinked(input) {
     const opts = input || {};
     const item = opts.item;
@@ -336,6 +350,16 @@
     if (!ioUtils) return Object.assign({ status: "failed", reason: "missing-ioUtils" }, base);
     const exists = await safeCall(() => ioUtils.exists(targetAbsPath), false);
     if (!exists) return Object.assign({ status: "blocked", reason: "md-file-not-found", targetAbsPath }, base);
+
+    const existing = findExistingLinkedChild(parentItem, targetRelativePath, zotero);
+    if (existing) {
+      return Object.assign({
+        status: "success",
+        reason: "already-linked",
+        skipped: "already-linked",
+        newItemKey: existing.key || null
+      }, base);
+    }
 
     // Use Zotero.Attachments.linkFromFile to create the linked attachment.
     if (!zotero.Attachments || typeof zotero.Attachments.linkFromFile !== "function") {

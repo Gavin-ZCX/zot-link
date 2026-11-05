@@ -75,7 +75,11 @@ const sandbox = {
     Attachments: {
       LINK_MODE_IMPORTED_FILE: 0,
       LINK_MODE_LINKED_FILE: 2,
-      LINK_MODE_LINKED_URL: 3
+      LINK_MODE_LINKED_URL: 3,
+      async linkFromFile(opts) {
+        createdItems.push({ key: "LINKED" + (++nextItemID), opts });
+        return { key: "LINKED" + nextItemID, opts, async save() {} };
+      }
     },
     Prefs: {
       get(name) {
@@ -263,6 +267,50 @@ const cloneFailResult = plain(await convert.convertImportedToLinked({
 assert.equal(cloneFailResult.status, "failed");
 assert.ok(cloneFailResult.reason.includes("clone"), `Expected clone-related reason, got: ${cloneFailResult.reason}`);
 assert.equal(erasedItems.length, 0, "Original must not be erased on clone failure");
+
+// --- Test: linkExistingFile is idempotent for an existing child attachment --
+resetMocks();
+const existingMarkdownAttachment = {
+  key: "EXISTINGMD",
+  isAttachment: () => true,
+  attachmentLinkMode: 2,
+  attachmentPath: "attachments:_items/PARENT42/notes/速读笔记.md"
+};
+const parentWithExistingMarkdown = {
+  key: "PARENT42",
+  id: 42,
+  isRegularItem: () => true,
+  isAttachment: () => false,
+  getAttachments: () => [777]
+};
+const zoteroWithExistingMarkdown = {
+  ...sandbox.Zotero,
+  Items: {
+    ...sandbox.Zotero.Items,
+    get(id) {
+      if (id === 777) return existingMarkdownAttachment;
+      return sandbox.Zotero.Items.get(id);
+    }
+  }
+};
+const notePath = join(targetRoot, "_items", "PARENT42", "notes", "速读笔记.md");
+mkdirSync(dirname(notePath), { recursive: true });
+writeFileSync(notePath, "existing skim note");
+
+const linkedAgainResult = plain(await convert.linkExistingFile({
+  parentItem: parentWithExistingMarkdown,
+  parentKey: "PARENT42",
+  targetRelativePath: "_items/PARENT42/notes/速读笔记.md",
+  title: "速读笔记",
+  contentType: "text/markdown",
+  zotero: zoteroWithExistingMarkdown,
+  ioUtils: sandbox.IOUtils
+}));
+
+assert.equal(linkedAgainResult.status, "success");
+assert.equal(linkedAgainResult.reason, "already-linked");
+assert.equal(linkedAgainResult.newItemKey, "EXISTINGMD");
+assert.equal(createdItems.length, 0, "Must not call linkFromFile when target is already attached");
 
 // Cleanup
 rmSync(tmpDir, { recursive: true, force: true });

@@ -42,6 +42,7 @@ async function startup({ id, version, rootURI }, reason) {
   Services.scriptloader.loadSubScript(rootURI + "src/preview.js");
   Services.scriptloader.loadSubScript(rootURI + "src/convert.js");
   Services.scriptloader.loadSubScript(rootURI + "src/autoConvert.js");
+  Services.scriptloader.loadSubScript(rootURI + "src/queueWorker.js");
   Services.scriptloader.loadSubScript(rootURI + "src/menus.js");
   Services.scriptloader.loadSubScript(rootURI + "src/contextMenu.js");
 
@@ -66,6 +67,11 @@ async function startup({ id, version, rootURI }, reason) {
   if (ZotLink.autoConvert && typeof ZotLink.autoConvert.start === "function") {
     ZotLink.autoConvert.start();
   }
+
+  // Start local queue worker for Hermes-triggered actions.
+  if (ZotLink.queueWorker && typeof ZotLink.queueWorker.start === "function") {
+    ZotLink.queueWorker.start();
+  }
 }
 
 async function shutdown({ id, version, rootURI }, reason) {
@@ -74,6 +80,10 @@ async function shutdown({ id, version, rootURI }, reason) {
 
   if (ZotLink.autoConvert && typeof ZotLink.autoConvert.stop === "function") {
     ZotLink.autoConvert.stop();
+  }
+
+  if (ZotLink.queueWorker && typeof ZotLink.queueWorker.stop === "function") {
+    ZotLink.queueWorker.stop();
   }
 
   Services.wm.removeListener(ZotLink.windowListener);

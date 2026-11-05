@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "zot-link",
-  "version": "0.0.17",
+  "version": "0.0.27",
   "description": "Convert Zotero imported attachments into structured linked files under _items/{KEY}/.",
   "author": "zot-link contributors",
   "applications": {
@@ -9,7 +9,7 @@
       "id": "zot-link@local.invalid",
       "update_url": "https://example.com/zot-link/updates.json",
       "strict_min_version": "6.999",
-      "strict_max_version": "9.*"
+      "strict_max_version": "10.*"
     }
   }
 }
