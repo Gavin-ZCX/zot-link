@@ -298,8 +298,17 @@ dist/zot-link-<version>.xpi
 ### Automation & Releases
 
 Releases are automated via GitHub Actions:
-- Any push to `main` runs syntax checks and the full test suite automatically.
+- Any push to `main` (and any pull request) runs syntax checks and the full test suite automatically.
 - Pushing a version tag (e.g. `v0.0.27`) triggers the release pipeline, builds the `.xpi`, and publishes it directly to GitHub Releases.
+- The tag must equal `v` + the `version` in `manifest.json` (and `package.json` must match); otherwise the pipeline fails before building.
+
+Release checklist:
+1. Bump `version` in both `manifest.json` and `package.json`; if Zotero has a new major version, check `strict_max_version`.
+2. Push to `main`, wait for CI to pass, then push the tag `v<version>`.
+3. Install only the `.xpi` attached to the GitHub Release, not a locally built one. Release assets show a `sha256` digest you can compare against the installed file.
+4. After installing, confirm in Zotero that the add-on is enabled (not "incompatible") and that the Tools → zot-link status shows the queue worker running. Install or restart only when the action queue's `pending/` is empty.
+
+Builds are reproducible: entry timestamps are fixed (override with `SOURCE_DATE_EPOCH`), file order is sorted, and `.gitattributes` forces LF line endings, so the same commit builds the same `.xpi` bytes on any machine.
 
 ---
 
