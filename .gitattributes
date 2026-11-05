@@ -1,0 +1,4 @@
+# Normalize all text files to LF so local (Windows) builds and CI builds ship identical bytes.
+* text=auto eol=lf
+*.xpi binary
+*.png binary

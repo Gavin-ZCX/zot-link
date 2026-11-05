@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join, posix, relative, sep } from "node:path";
 import { deflateRawSync, crc32 } from "node:zlib";
+import { createHash } from "node:crypto";
 
 const repoRoot = join(import.meta.dirname, "..");
 const manifest = JSON.parse(readFileSync(join(repoRoot, "manifest.json"), "utf8"));
@@ -20,7 +21,8 @@ function collectFiles(rootRel) {
   if (stat.isFile()) return [rootRel];
   if (!stat.isDirectory()) return [];
   const out = [];
-  for (const name of readdirSync(abs)) {
+  // Sorted so the archive order does not depend on the filesystem.
+  for (const name of readdirSync(abs).sort()) {
     out.push(...collectFiles(join(rootRel, name)));
   }
   return out;
@@ -39,8 +41,13 @@ function dosTime(date) {
 const centralEntries = [];
 const localChunks = [];
 let offset = 0;
-const now = new Date();
-const { t: dosT, d: dosD } = dosTime(now);
+// Fixed entry timestamp (or SOURCE_DATE_EPOCH) so the same source always yields the same .xpi bytes.
+// The UTC date parts are used so the result does not depend on the build machine's time zone.
+const epochSec = Number(process.env.SOURCE_DATE_EPOCH || 315532800); // 1980-01-01T00:00:00Z
+const stamp = new Date(epochSec * 1000);
+const fixed = new Date(stamp.getUTCFullYear(), stamp.getUTCMonth(), stamp.getUTCDate(),
+  stamp.getUTCHours(), stamp.getUTCMinutes(), stamp.getUTCSeconds());
+const { t: dosT, d: dosD } = dosTime(fixed);
 
 for (const relPath of files) {
   const arcname = relPath.split(sep).join(posix.sep);
@@ -115,4 +122,5 @@ const archive = Buffer.concat([...localChunks, ...centralChunks, eocd]);
 mkdirSync(join(repoRoot, "dist"), { recursive: true });
 const outPath = join(repoRoot, "dist", xpiName);
 writeFileSync(outPath, archive);
-console.log(`[build] wrote ${outPath} (${archive.length} bytes)`);
+const sha256 = createHash("sha256").update(archive).digest("hex");
+console.log(`[build] wrote ${outPath} (${archive.length} bytes, sha256 ${sha256})`);
