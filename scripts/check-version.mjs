@@ -1,12 +1,13 @@
 // Release guard: the pushed tag, manifest.json and package.json must agree on the version.
-// Usage: node scripts/check-version.mjs [tag]   (tag defaults to $GITHUB_REF_NAME)
+// Usage: node scripts/check-version.mjs [tag]   (no argument: $GITHUB_REF_NAME; "" skips the tag check)
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const repoRoot = join(import.meta.dirname, "..");
 const manifest = JSON.parse(readFileSync(join(repoRoot, "manifest.json"), "utf8"));
 const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
-const tag = process.argv[2] || process.env.GITHUB_REF_NAME || "";
+// An explicit argument (even "") wins; the env fallback is only for running without arguments.
+const tag = process.argv.length > 2 ? process.argv[2] : (process.env.GITHUB_REF_NAME || "");
 
 const problems = [];
 if (manifest.version !== pkg.version) {
