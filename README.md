@@ -295,6 +295,12 @@ The packaged plugin is written to:
 dist/zot-link-<version>.xpi
 ```
 
+### Automation & Releases
+
+Releases are automated via GitHub Actions:
+- Any push to `main` runs syntax checks and the full test suite automatically.
+- Pushing a version tag (e.g. `v0.0.27`) triggers the release pipeline, builds the `.xpi`, and publishes it directly to GitHub Releases.
+
 ---
 
 ## Development notes
